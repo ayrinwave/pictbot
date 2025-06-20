@@ -69,9 +69,8 @@
 
         if (tg) {
             tg.ready();
-            globalInitData = tg.initData; // Сохраняем initData
+            globalInitData = tg.initData;
 
-            // Авторизация текущего пользователя
             fetch('/auth', {
                 method: 'POST',
                 headers: {
@@ -93,7 +92,7 @@
                     if (data.ok) {
                         telegramUserID = data.user.id;
                         console.log("✅ Current Telegram user ID obtained:", telegramUserID);
-                        loadSubscribedUsers(); // Загружаем подписки после авторизации
+                        loadSubscribedUsers();
                     } else {
                         console.warn("⚠️ Authentication failed on my_subscriptions page:", data.error);
                         showMessageModal("Ошибка авторизации. Не удалось загрузить подписки.");
@@ -112,14 +111,13 @@
         }
     });
 
-    // === Основная функция загрузки подписок ===
     async function loadSubscribedUsers() {
         const subscriptionsList = document.getElementById('subscriptions-list');
         const loadingSpinner = document.getElementById('loading-spinner');
 
         if (loadingSpinner) {
             loadingSpinner.classList.remove('hidden');
-            subscriptionsList.innerHTML = ''; // Очищаем содержимое перед загрузкой
+            subscriptionsList.innerHTML = '';
         }
 
         if (!telegramUserID || !globalInitData) {
@@ -133,7 +131,7 @@
             const response = await fetch('/api/my_subscriptions', {
                 method: 'GET',
                 headers: {
-                    'X-Telegram-Init-Data': globalInitData, // Отправляем initData в заголовке
+                    'X-Telegram-Init-Data': globalInitData,
                     'Content-Type': 'application/json'
                 }
             });
@@ -162,10 +160,9 @@
         }
     }
 
-    // === Функция рендеринга пользователей ===
     function renderSubscribedUsers(users) {
         const subscriptionsList = document.getElementById('subscriptions-list');
-        subscriptionsList.innerHTML = ''; // Очищаем перед добавлением
+        subscriptionsList.innerHTML = '';
 
         if (!users || users.length === 0) {
             subscriptionsList.innerHTML = `<p class="no-subscriptions">Вы пока ни на кого не подписаны.</p>`;
@@ -175,23 +172,19 @@
         users.forEach(user => {
             let photoURL = getNullStringValue(user.photo_url);
             if (!photoURL) {
-                photoURL = '/static/default_avatar.png'; // Заглушка, если фото нет
+                photoURL = '/static/default_avatar.png';
             } else if (!photoURL.startsWith('/') && !photoURL.startsWith('http')) {
-                // Если путь относительный и не начинается с /static/ или http
-                photoURL = '/' + photoURL; // Предполагаем, что это путь от корня
+                photoURL = '/' + photoURL;
             }
 
             const firstName = getNullStringValue(user.first_name);
             const lastName = getNullStringValue(user.last_name);
-            // const username = getNullStringValue(user.telegram_username); // Эту строку можно удалить или закомментировать
 
             let displayName = firstName;
             if (lastName) {
                 displayName += ` ${lastName}`;
             }
-            // Если нет ни имени, ни фамилии, то теперь не будем использовать username
             if (!displayName) {
-                // Можно использовать просто ID пользователя или "Неизвестный пользователь"
                 displayName = `Пользователь ${user.telegram_user_id}`;
             }
 
@@ -207,7 +200,6 @@
             subscriptionsList.appendChild(userCard);
         });
 
-        // Добавляем обработчики для кнопок "Профиль"
         document.querySelectorAll('.view-profile-button').forEach(button => {
             button.addEventListener('click', (event) => {
                 const targetUserID = event.target.dataset.userId;
@@ -218,7 +210,6 @@
         });
     }
 
-    // === Функции навигации в футере ===
     function goToHomePage() {
         window.location.href = `/`;
     }
@@ -233,7 +224,7 @@
 
     function viewMyGalleries() {
         if (telegramUserID) {
-            window.location.href = `/my_galleries`; // или `/user_galleries?user_id=${telegramUserID}`
+            window.location.href = `/my_galleries`;
         } else {
             showMessageModal("Ошибка: Telegram ID не получен. Авторизация не пройдена.");
         }
@@ -246,7 +237,6 @@
             showMessageModal("Ошибка: Telegram ID не получен. Авторизация не пройдена.");
         }
     }
-
 </script>
 </body>
 </html>
