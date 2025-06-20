@@ -10,7 +10,6 @@ import (
 	"time"
 )
 
-// checkSubscriptionStatusHandler проверяет, подписан ли текущий пользователь на целевого
 func CheckSubscriptionStatusHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
@@ -42,7 +41,6 @@ func CheckSubscriptionStatusHandler(db *sql.DB) gin.HandlerFunc {
 		}
 
 		if subscriberID == targetUserID {
-			// Пользователь просматривает свой профиль, не может быть подписан сам на себя
 			c.JSON(http.StatusOK, gin.H{"ok": true, "isSubscribed": false})
 			return
 		}
@@ -59,7 +57,6 @@ func CheckSubscriptionStatusHandler(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
-// subscribeHandler добавляет подписку
 func SubscribeHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
@@ -95,7 +92,6 @@ func SubscribeHandler(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		// Проверяем, существует ли целевой пользователь
 		var userExists bool
 		err = db.QueryRow("SELECT EXISTS(SELECT 1 FROM users WHERE telegram_user_id = $1)", targetUserID).Scan(&userExists)
 		if err != nil {
@@ -111,8 +107,7 @@ func SubscribeHandler(db *sql.DB) gin.HandlerFunc {
 		_, err = db.Exec("INSERT INTO subscriptions (subscriber_id, target_user_id, created_at) VALUES ($1, $2, $3)",
 			subscriberID, targetUserID, time.Now())
 		if err != nil {
-			// Если подписка уже существует (primary key violation)
-			if strings.Contains(err.Error(), "duplicate key value") || strings.Contains(err.Error(), "UNIQUE constraint failed") { // Для PostgreSQL/SQLite
+			if strings.Contains(err.Error(), "duplicate key value") || strings.Contains(err.Error(), "UNIQUE constraint failed") {
 				log.Printf("⚠️ subscribeHandler: User %d is already subscribed to %d", subscriberID, targetUserID)
 				c.JSON(http.StatusConflict, gin.H{"ok": false, "error": "Already subscribed"})
 				return
@@ -127,7 +122,6 @@ func SubscribeHandler(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
-// unsubscribeHandler удаляет подписку
 func UnsubscribeHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
@@ -188,8 +182,6 @@ func UnsubscribeHandler(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
-// GetSubscribedUsersHandler обрабатывает запрос на получение списка пользователей,
-// на которых подписан текущий авторизованный пользователь.
 func GetSubscribedUsersHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
@@ -213,23 +205,22 @@ func GetSubscribedUsersHandler(db *sql.DB) gin.HandlerFunc {
 		}
 
 		var subscribedUsers []SubscribedUserProfile
-		// Запрос к БД для получения пользователей, на которых подписан currentUserID
 		rows, err := db.Query(`
-            SELECT
-                u.telegram_user_id,
-                u.telegram_username,
-                u.first_name,
-                u.last_name,
-                u.photo_url
-            FROM
-                subscriptions s
-            JOIN
-                users u ON s.target_user_id = u.telegram_user_id
-            WHERE
-                s.subscriber_id = $1
-            ORDER BY
-                u.first_name ASC, u.telegram_username ASC;
-        `, currentUserID)
+			SELECT
+				u.telegram_user_id,
+				u.telegram_username,
+				u.first_name,
+				u.last_name,
+				u.photo_url
+			FROM
+				subscriptions s
+			JOIN
+				users u ON s.target_user_id = u.telegram_user_id
+			WHERE
+				s.subscriber_id = $1
+			ORDER BY
+				u.first_name ASC, u.telegram_username ASC;
+		`, currentUserID)
 		if err != nil {
 			log.Printf("❌ GetSubscribedUsersHandler: Error querying subscribed users for %d: %v", currentUserID, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": "Failed to retrieve subscribed users"})
@@ -248,8 +239,6 @@ func GetSubscribedUsersHandler(db *sql.DB) gin.HandlerFunc {
 			)
 			if err != nil {
 				log.Printf("❌ GetSubscribedUsersHandler: Error scanning subscribed user row: %v", err)
-				// Продолжаем, чтобы не прерывать весь список из-за одной ошибки,
-				// но в реальном приложении можно рассмотреть более строгую обработку
 				continue
 			}
 			subscribedUsers = append(subscribedUsers, user)
@@ -266,21 +255,17 @@ func GetSubscribedUsersHandler(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
-// Вспомогательная функция для парсинга тегов из строки БД в срез строк
 func ParseTags(tagString sql.NullString) []string {
 	if !tagString.Valid || tagString.String == "" {
 		return []string{}
 	}
-	// Предполагаем, что теги хранятся как строка, разделенная запятыми (например, "tag1,tag2,tag3")
 	tags := strings.Split(tagString.String, ",")
-	// Очищаем пробелы вокруг тегов
 	for i, tag := range tags {
 		tags[i] = strings.TrimSpace(tag)
 	}
 	return tags
 }
 
-// GetFavoriteGalleriesHandler обрабатывает запрос на получение списка избранных галерей
 func GetFavoriteGalleriesHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
@@ -290,7 +275,7 @@ func GetFavoriteGalleriesHandler(db *sql.DB) gin.HandlerFunc {
 			}
 		}()
 
-		userID, exists := c.Get("userID") // Получаем userID из контекста, установленного AuthMiddleware
+		userID, exists := c.Get("userID")
 		if !exists {
 			log.Println("❌ GetFavoriteGalleriesHandler: User ID not found in context (AuthMiddleware missing or failed).")
 			c.JSON(http.StatusUnauthorized, gin.H{"ok": false, "error": "Authentication required"})
@@ -305,39 +290,37 @@ func GetFavoriteGalleriesHandler(db *sql.DB) gin.HandlerFunc {
 
 		var favoriteGalleries []GalleryFullDetail
 
-		// ИЗМЕНЕННЫЙ ЗАПРОС К БД: ДОБАВЛЕН JOIN С ТАБЛИЦЕЙ USERS
 		rows, err := db.Query(`
-            SELECT
-                g.id,
-                g.name,
-                g.user_id,
-                COALESCE(
-                    (SELECT i.preview_image_path FROM gallery_images i WHERE i.gallery_id = g.id ORDER BY i.id LIMIT 1),
-                    ''
-                ) AS preview_url,
-                (SELECT COUNT(*) FROM gallery_images WHERE gallery_id = g.id) AS image_count,
-                t.tags_string,
-                g.created_at,
-                -- Добавляем поля пользователя-создателя
-                u.telegram_user_id,
-                u.telegram_username,
-                u.first_name,
-                u.last_name,
-                u.photo_url
-            FROM
-                galleries g
-            JOIN
-                favorites f ON g.id = f.gallery_id
-            LEFT JOIN
-                (SELECT gallery_id, STRING_AGG(tag, ', ') AS tags_string FROM tags GROUP BY gallery_id) t
-                ON g.id = t.gallery_id
-            JOIN -- ИЗМЕНЕНО: Добавляем JOIN с таблицей users
-                users u ON g.user_id = u.telegram_user_id
-            WHERE
-                f.user_id = $1
-            ORDER BY
-                g.created_at DESC;
-        `, currentUserID)
+			SELECT
+				g.id,
+				g.name,
+				g.user_id,
+				COALESCE(
+					(SELECT i.preview_image_path FROM gallery_images i WHERE i.gallery_id = g.id ORDER BY i.id LIMIT 1),
+					''
+				) AS preview_url,
+				(SELECT COUNT(*) FROM gallery_images WHERE gallery_id = g.id) AS image_count,
+				t.tags_string,
+				g.created_at,
+				u.telegram_user_id,
+				u.telegram_username,
+				u.first_name,
+				u.last_name,
+				u.photo_url
+			FROM
+				galleries g
+			JOIN
+				favorites f ON g.id = f.gallery_id
+			LEFT JOIN
+				(SELECT gallery_id, STRING_AGG(tag, ', ') AS tags_string FROM tags GROUP BY gallery_id) t
+				ON g.id = t.gallery_id
+			JOIN
+				users u ON g.user_id = u.telegram_user_id
+			WHERE
+				f.user_id = $1
+			ORDER BY
+				g.created_at DESC;
+		`, currentUserID)
 		if err != nil {
 			log.Printf("❌ GetFavoriteGalleriesHandler: Error querying favorite galleries for user %d: %v", currentUserID, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": "Failed to retrieve favorite galleries"})
@@ -380,7 +363,7 @@ func GetFavoriteGalleriesHandler(db *sql.DB) gin.HandlerFunc {
 			g.CreatorLastName = creatorLastName
 			g.CreatorPhotoURL = creatorPhotoURL
 
-			favoriteGalleries = append(favoriteGalleries, g) // <<< ВОТ ЭТА СТРОКА ОШИБЛАСЬ
+			favoriteGalleries = append(favoriteGalleries, g)
 		}
 
 		if err = rows.Err(); err != nil {
@@ -394,10 +377,9 @@ func GetFavoriteGalleriesHandler(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
-// AddFavoriteHandler (POST /api/favorites/:galleryID)
 func AddFavoriteHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		currentUserID := c.GetInt64("userID") // Получаем UserID из AuthMiddleware
+		currentUserID := c.GetInt64("userID")
 		if currentUserID == 0 {
 			c.JSON(http.StatusUnauthorized, gin.H{"ok": false, "error": "Пользователь не авторизован."})
 			return
@@ -422,24 +404,23 @@ func AddFavoriteHandler(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
-// RemoveFavoriteHandler (DELETE /api/favorites/:galleryID)
 func RemoveFavoriteHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		log.Println("Handling DELETE /api/favorites/:galleryID request...") // Добавьте это
-		currentUserID := c.GetInt64("userID")                               // Получаем UserID из AuthMiddleware
-		log.Printf("Current User ID from context: %d", currentUserID)       // Добавьте это
+		log.Println("Handling DELETE /api/favorites/:galleryID request...")
+		currentUserID := c.GetInt64("userID")
+		log.Printf("Current User ID from context: %d", currentUserID)
 
 		if currentUserID == 0 {
-			log.Println("Authentication failed: UserID is 0.") // Добавьте это
+			log.Println("Authentication failed: UserID is 0.")
 			c.JSON(http.StatusUnauthorized, gin.H{"ok": false, "error": "Пользователь не авторизован."})
 			return
 		}
 
 		galleryIDStr := c.Param("galleryID")
-		log.Printf("Attempting to remove favorite for gallery ID: %s", galleryIDStr) // Добавьте это
+		log.Printf("Attempting to remove favorite for gallery ID: %s", galleryIDStr)
 		galleryID, err := strconv.ParseInt(galleryIDStr, 10, 64)
 		if err != nil {
-			log.Printf("Invalid gallery ID format: %s, error: %v", galleryIDStr, err) // Добавьте это
+			log.Printf("Invalid gallery ID format: %s, error: %v", galleryIDStr, err)
 			c.JSON(http.StatusBadRequest, gin.H{"ok": false, "error": "Неверный ID галереи."})
 			return
 		}
@@ -447,12 +428,12 @@ func RemoveFavoriteHandler(db *sql.DB) gin.HandlerFunc {
 		_, err = db.Exec("DELETE FROM favorites WHERE user_id = $1 AND gallery_id = $2",
 			currentUserID, galleryID)
 		if err != nil {
-			log.Printf("Error removing favorite from DB: %v", err) // Добавьте это
+			log.Printf("Error removing favorite from DB: %v", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": "Не удалось удалить из избранного."})
 			return
 		}
 
-		log.Println("Gallery successfully removed from favorites.") // Добавьте это
+		log.Println("Gallery successfully removed from favorites.")
 		c.JSON(http.StatusOK, gin.H{"ok": true, "message": "Галерея удалена из избранного."})
 	}
 }
