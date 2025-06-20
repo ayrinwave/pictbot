@@ -23,34 +23,28 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"time" // Для AuthMiddleware, чтобы user.created_at
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
-	_ "github.com/lib/pq" // драйвер для PostgreSQL
+	_ "github.com/lib/pq"
 	"github.com/nfnt/resize"
 	_ "golang.org/x/image/webp"
 )
 
 const (
 	MAX_CONCURRENT_IMAGE_PROCESSING = 1
-	// Размеры для различных версий изображений
-	PREVIEW_WIDTH        uint = 300  // Ширина превью
-	FULL_SIZE_WIDTH      uint = 1000 // Ширина для полноразмерного просмотра в модальном окне
-	JPEG_QUALITY_PREVIEW      = 60   // Качество JPEG для превью (от 1 до 100)
-	JPEG_QUALITY_FULL         = 80   // Качество JPEG для полноразмерной версии
-	// Удалите WEBP_QUALITY_FULL, если вы не кодируете в WebP
+	PREVIEW_WIDTH                   uint = 300
+	FULL_SIZE_WIDTH                 uint = 1000
+	JPEG_QUALITY_PREVIEW                 = 60
+	JPEG_QUALITY_FULL                    = 80
 )
 
-// BotToken для проверки initData
 var BotToken string
 
 func init() {
-	// Убедитесь, что godotenv.Load() ищет .env правильно
-	// Если .env находится в той же директории, что и исполняемый файл:
-	err := godotenv.Load() // По умолчанию ищет ".env" в текущей рабочей директории
+	err := godotenv.Load()
 	if err != nil {
-		// Не log.Fatal, если предполагается, что переменные могут быть от Docker
 		log.Printf("⚠️ Ошибка загрузки файла .env: %v (продолжаем, используя переменные окружения)", err)
 	}
 
@@ -61,23 +55,17 @@ func init() {
 
 	UPLOADS_BASE_PATH_FOR_WRITING = os.Getenv("UPLOAD_PATH")
 	if UPLOADS_BASE_PATH_FOR_WRITING == "" {
-		// Если UPLOAD_PATH не установлен Docker'ом, используем запасной путь
-		UPLOADS_BASE_PATH_FOR_WRITING = "/app/uploads" // Это должно быть внутри контейнера
+		UPLOADS_BASE_PATH_FOR_WRITING = "/app/uploads"
 		log.Printf("ℹ️ UPLOAD_PATH не установлен в переменных окружения. Используется путь по умолчанию: %s", UPLOADS_BASE_PATH_FOR_WRITING)
 	} else {
 		log.Printf("✅ UPLOAD_PATH из переменных окружения: %s", UPLOADS_BASE_PATH_FOR_WRITING)
 	}
-
-	// Опционально: Измените алгоритм для превью (в saveProcessedImage)
-	// previewImg := resize.Resize(PREVIEW_WIDTH, 0, img, resize.Bilinear) // Или NearestNeighbor
-	// Это делается в saveProcessedImage, не в init()
 
 	if err := os.MkdirAll(UPLOADS_BASE_PATH_FOR_WRITING, 0755); err != nil {
 		log.Fatalf("❌ Не удалось создать базовую директорию для загрузок '%s': %v", UPLOADS_BASE_PATH_FOR_WRITING, err)
 	}
 }
 
-// saveProcessedImage обрабатывает и сохраняет изображение в различных форматах
 func saveProcessedImage(inputReader io.Reader, originalFilename string, fullGalleryFolderPath string, dbFolderPath string) (*ImagePaths, error) {
 	imageData, err := io.ReadAll(inputReader)
 	if err != nil {
@@ -182,7 +170,6 @@ func saveAnimatedGIF(gifImg *gif.GIF, filePath string) error {
 	return gif.EncodeAll(out, gifImg)
 }
 
-// saveJPG сохраняет image.Image в файл JPEG с указанным качеством
 func saveJPG(img image.Image, filePath string, quality int) error {
 	out, err := os.Create(filePath)
 	if err != nil {
@@ -291,13 +278,12 @@ func AddGalleryHandler(db *sql.DB) gin.HandlerFunc {
 		}
 		log.Printf("✅ AddGalleryHandler: Галерея '%s' (ID: %d) добавлена в БД (временный folder_path).", cleanGalleryName, newGalleryID)
 
-		// Создание папки для галереи
 		fullGalleryFolderPath := filepath.Join(UPLOADS_BASE_PATH_FOR_WRITING, "gallery_images", strconv.FormatInt(newGalleryID, 10))
 		log.Printf("📂 AddGalleryHandler: Попытка создать папку: %s", fullGalleryFolderPath)
 
 		if err := os.MkdirAll(fullGalleryFolderPath, 0755); err != nil {
 			log.Printf("❌ AddGalleryHandler: Ошибка создания директории %s: %v", fullGalleryFolderPath, err)
-			tx.Rollback() // Откатываем транзакцию
+			tx.Rollback()
 			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": "Ошибка сервера при создании папки для галереи"})
 			return
 		}
@@ -346,28 +332,23 @@ func AddGalleryHandler(db *sql.DB) gin.HandlerFunc {
 			return
 		}
 
-		const maxFileSize = 32 << 20 // 32 МБ
+		const maxFileSize = 32 << 20
 		var wg sync.WaitGroup
 		var savedFileCount int32
 		var imageErrors []error
 		errChan := make(chan error, len(files))
 		imagePathsToDBChan := make(chan *ImagePaths, len(files))
 
-		// --- ДОБАВЬТЕ ЭТОТ СЕМАФОР ---
 		sem := make(chan struct{}, MAX_CONCURRENT_IMAGE_PROCESSING)
-		// -----------------------------
 
 		var firstGalleryPreviewURL atomic.Value
 		firstGalleryPreviewURL.Store("")
 
 		for _, fileHeader := range files {
 			wg.Add(1)
-			// --- ДОБАВЬТЕ ЭТОТ БЛОК ---
-			sem <- struct{}{} // Захватываем "токен" из семафора. Блокирует, если канал полон.
-			// --------------------------
+			sem <- struct{}{}
 			go func(fileHeader *multipart.FileHeader) {
 				defer wg.Done()
-				// --- ДОБАВЬТЕ ЭТОТ БЛОК ---
 				defer func() { <-sem }()
 
 				if fileHeader.Size > maxFileSize {
@@ -431,10 +412,10 @@ func AddGalleryHandler(db *sql.DB) gin.HandlerFunc {
 		}
 
 		updateGalleryQuery := `
-            UPDATE galleries
-            SET preview_url = $1, image_count = $2
-            WHERE id = $3;
-        `
+			UPDATE galleries
+			SET preview_url = $1, image_count = $2
+			WHERE id = $3;
+		`
 		_, err = tx.Exec(updateGalleryQuery, finalPreviewURL, atomic.LoadInt32(&savedFileCount), newGalleryID)
 		if err != nil {
 			log.Printf("❌ AddGalleryHandler: Ошибка обновления preview_url/image_count для галереи ID=%d: %v", newGalleryID, err)
@@ -451,9 +432,9 @@ func AddGalleryHandler(db *sql.DB) gin.HandlerFunc {
 
 		if len(allProcessedPaths) > 0 {
 			stmt, err := tx.Prepare(`
-                INSERT INTO gallery_images (gallery_id, full_size_image_path, preview_image_path, created_at)
-                VALUES ($1, $2, $3, $4)
-            `)
+				INSERT INTO gallery_images (gallery_id, full_size_image_path, preview_image_path, created_at)
+				VALUES ($1, $2, $3, $4)
+			`)
 			if err != nil {
 				log.Printf("❌ AddGalleryHandler: Ошибка подготовки запроса для массовой вставки изображений: %v", err)
 				tx.Rollback()
@@ -529,7 +510,6 @@ func AddGalleryHandler(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
-// byteCountToHuman: Вспомогательная функция для форматирования размера файла.
 func byteCountToHuman(b int64) string {
 	const unit = 1024
 	if b < unit {
@@ -543,21 +523,21 @@ func byteCountToHuman(b int64) string {
 	return fmt.Sprintf("%.1f %cB", float64(b)/float64(div), "KMGTPE"[exp])
 }
 func generateShortUUID() string {
-	return strings.ReplaceAll(uuid.New().String(), "-", "")[:8] // Пример: первые 8 символов без дефисов
+	return strings.ReplaceAll(uuid.New().String(), "-", "")[:8]
 }
 
 var UPLOADS_BASE_PATH_FOR_WRITING string
 
 func AddTagsToGalleryTx(tx *sql.Tx, galleryID int64, tags []string) error {
 	if len(tags) == 0 {
-		return nil // Нет тегов для добавления
+		return nil
 	}
 
 	for _, tag := range tags {
-		_, err := tx.Exec( // Используем tx.Exec вместо db.Exec
+		_, err := tx.Exec(
 			"INSERT INTO tags (gallery_id, tag) VALUES ($1, $2)",
 			galleryID,
-			strings.ToLower(strings.TrimSpace(tag)), // Теги сохраняются в нижнем регистре
+			strings.ToLower(strings.TrimSpace(tag)),
 		)
 		if err != nil {
 			return fmt.Errorf("ошибка добавления тега '%s': %w", tag, err)
@@ -623,7 +603,6 @@ func AuthMiddleware(db *sql.DB, botToken string) gin.HandlerFunc {
 		}
 
 		if initDataRaw != "" {
-			// Шаг 1: Валидация хэша
 			err := initdata.Validate(initDataRaw, botToken, 24*time.Hour)
 			if err != nil {
 				log.Printf("❌ AuthMiddleware: Ошибка валидации initData: %v", err)
@@ -633,7 +612,6 @@ func AuthMiddleware(db *sql.DB, botToken string) gin.HandlerFunc {
 			}
 			log.Println("✅ AuthMiddleware: initData успешно валидирован.")
 
-			// Шаг 2: Парсинг данных пользователя из валидного initData
 			parsedInitData, err = initdata.Parse(initDataRaw)
 			if err != nil {
 				log.Printf("❌ AuthMiddleware: Ошибка парсинга initData после валидации: %v", err)
@@ -642,14 +620,13 @@ func AuthMiddleware(db *sql.DB, botToken string) gin.HandlerFunc {
 				return
 			}
 
-			if parsedInitData.User.ID == 0 { // Проверка, что User не nil (если это указатель) и ID не 0
+			if parsedInitData.User.ID == 0 {
 				log.Println("❌ AuthMiddleware: В валидном initData отсутствует информация о пользователе (User - nil или User.ID=0).")
 				c.JSON(http.StatusUnauthorized, gin.H{"ok": false, "error": "user data missing or invalid in initData"})
 				c.Abort()
 				return
 			}
 
-			// Извлекаем все данные пользователя
 			userID := parsedInitData.User.ID
 			username := parsedInitData.User.Username
 			firstName := parsedInitData.User.FirstName
@@ -668,7 +645,6 @@ func AuthMiddleware(db *sql.DB, botToken string) gin.HandlerFunc {
 			}
 			log.Printf("✅ AuthMiddleware: Пользователь БД (ID: %d) успешно обновлен/создан.", dbUser.TelegramUserID)
 
-			// Сохраняем ВСЕ данные пользователя в контексте Gin
 			c.Set("userID", userID)
 			c.Set("telegramUsername", dbUser.TelegramUsername.String)
 			c.Set("firstName", dbUser.FirstName.String)
