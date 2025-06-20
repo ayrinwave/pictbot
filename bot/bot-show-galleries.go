@@ -10,15 +10,12 @@ import (
 	"strings"
 )
 
-// AuthRequest - структура для входящего JSON запроса на авторизацию
 type AuthRequest struct {
 	InitData string `json:"initData"`
 }
 
-// Константы для путей загрузки
 const UPLOADS_PHYSICAL_BASE_PATH = "D:/Golang_Web_App_Bot_Test/uploads/"
 
-// isImageFile проверяет, является ли файл изображением по расширению
 func isImageFile(filename string) bool {
 	ext := filepath.Ext(filename)
 	switch strings.ToLower(ext) {
@@ -30,32 +27,31 @@ func isImageFile(filename string) bool {
 	}
 }
 
-// GetUserGalleries получает галереи для конкретного пользователя
 func GetUserGalleries(db *sql.DB, userID int64) ([]Gallery, error) {
 	var galleries []Gallery
 
 	log.Printf("🔍 Запрос галерей для userID: %d - Получение метаданных и preview_url.", userID)
 
 	query := `
-        SELECT
-            g.id,
-            g.name,
-            g.user_id,
-            g.created_at,
-            COALESCE(STRING_AGG(t.tag, ',' ORDER BY t.tag), '') AS tags_list,
-            COALESCE(g.image_count, 0) AS image_count, -- Используем image_count из таблицы galleries
-            g.preview_url -- ИЗМЕНЕНИЕ: Получаем preview_url напрямую из таблицы galleries
-        FROM
-            galleries g
-        LEFT JOIN
-            tags t ON g.id = t.gallery_id
-        WHERE
-            g.user_id = $1
-        GROUP BY
-            g.id, g.name, g.user_id, g.created_at, g.image_count, g.preview_url -- ИЗМЕНЕНИЕ: Добавляем image_count и preview_url в GROUP BY
-        ORDER BY
-            g.id DESC;
-    `
+		SELECT
+			g.id,
+			g.name,
+			g.user_id,
+			g.created_at,
+			COALESCE(STRING_AGG(t.tag, ',' ORDER BY t.tag), '') AS tags_list,
+			COALESCE(g.image_count, 0) AS image_count,
+			g.preview_url
+		FROM
+			galleries g
+		LEFT JOIN
+			tags t ON g.id = t.gallery_id
+		WHERE
+			g.user_id = $1
+		GROUP BY
+			g.id, g.name, g.user_id, g.created_at, g.image_count, g.preview_url
+		ORDER BY
+			g.id DESC;
+	`
 	rows, err := db.Query(query, userID)
 	if err != nil {
 		log.Printf("❌ Ошибка при запросе галерей для пользователя %d: %v", userID, err)
@@ -103,7 +99,6 @@ func GetUserGalleries(db *sql.DB, userID int64) ([]Gallery, error) {
 	return galleries, nil
 }
 
-// filterEmptyStrings - вспомогательная функция для фильтрации пустых строк
 func filterEmptyStrings(s []string) []string {
 	var r []string
 	for _, str := range s {
@@ -114,7 +109,6 @@ func filterEmptyStrings(s []string) []string {
 	return r
 }
 
-// GetMyGalleriesAPIHandler
 func GetMyGalleriesAPIHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		sessionUserID, exists := c.Get("userID")
@@ -145,7 +139,6 @@ func GetMyGalleriesAPIHandler(db *sql.DB) gin.HandlerFunc {
 	}
 }
 
-// DeleteGalleryHandler удаляет галерею пользователя.
 func DeleteGalleryHandler(db *sql.DB) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		defer func() {
@@ -196,7 +189,7 @@ func DeleteGalleryHandler(db *sql.DB) gin.HandlerFunc {
 		defer func() {
 			if r := recover(); r != nil {
 				log.Printf("🚨 Panic в DeleteGalleryHandler во время транзакции: %v", r)
-				tx.Rollback() // Откатываем транзакцию при панике
+				tx.Rollback()
 				c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": "Внутренняя ошибка сервера"})
 			}
 		}()
