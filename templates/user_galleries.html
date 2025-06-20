@@ -57,7 +57,6 @@
 </div>
 
 <script>
-    // === Функции из index.html, которые нужны и здесь ===
     function showMessageModal(message) {
         const modal = document.getElementById('messageModal');
         const modalMessage = document.getElementById('messageModalText');
@@ -72,15 +71,14 @@
 
     let currentGalleryImages = [];
     let slideIndex = 0;
-    let viewingUserID = null; // ID пользователя, чьи галереи просматриваем
-    let telegramUserID = null; // ID текущего авторизованного пользователя
+    let viewingUserID = null;
+    let telegramUserID = null;
 
-    // Улучшенная функция escapeHtml для обработки null/undefined
     function escapeHtml(text) {
         if (text === null || text === undefined) {
             return '';
         }
-        text = String(text); // Приводим к строке на всякий случай
+        text = String(text);
         const map = {
             '&': '&amp;',
             '<': '&lt;',
@@ -91,19 +89,16 @@
         return text.replace(/[&<>"']/g, function(m) { return map[m]; });
     }
 
-    // Вспомогательная функция для безопасного получения значения из sql.NullString
     function getNullStringValue(nullStringObject) {
-        // Проверяем, что nullStringObject не null/undefined и имеет свойство Valid
         return (nullStringObject && typeof nullStringObject === 'object' && nullStringObject.Valid) ? nullStringObject.String : '';
     }
 
     let globalInitData = null;
 
     document.addEventListener('DOMContentLoaded', function() {
-        const urlParams = new URLSearchParams(window.location.search);
+        const urlParams = new 
+URLSearchParams(window.location.search);
         viewingUserID = urlParams.get("user_id");
-        // Извлекаем "q" параметр, но если его нет, он будет null.
-        // Мы будем явно обрабатывать null в loadUserGalleries.
         const initialQuery = urlParams.get("q");
         const tg = window.Telegram && window.Telegram.WebApp;
 
@@ -142,7 +137,7 @@
                 });
         } else {
             console.warn("⚠️ Telegram WebApp not available. Current user ID will not be set.");
-            subscribeButton.style.display = 'none'; // Если WebApp нет, авторизации нет, кнопка подписки не нужна.
+            subscribeButton.style.display = 'none';
         }
 
         if (!viewingUserID) {
@@ -153,7 +148,7 @@
         }
 
         loadUserProfile(viewingUserID);
-        loadUserGalleries(viewingUserID, initialQuery); // Передаем initialQuery, который может быть null
+        loadUserGalleries(viewingUserID, initialQuery);
 
         if (initialQuery) {
             searchInput.value = initialQuery;
@@ -161,13 +156,11 @@
     });
 
     async function checkAndShowSubscribeButton() {
-        // Если просматриваем свои галереи, не показываем кнопку
         if (telegramUserID && viewingUserID && String(telegramUserID) === String(viewingUserID)) {
             subscribeButton.style.display = 'none';
             return;
         }
 
-        // Если viewingUserID не установлен или текущий пользователь не авторизован, скрываем кнопку
         if (!viewingUserID || !telegramUserID) {
             subscribeButton.style.display = 'none';
             return;
@@ -280,7 +273,7 @@
                 if (!photoURL) {
                     photoURL = '/static/default_avatar.png';
                 } else if (!photoURL.startsWith('/') && !photoURL.startsWith('http')) {
-                    photoURL = '/' + photoURL; // Предполагаем, что относительные пути нужно префикснуть
+                    photoURL = '/' + photoURL;
                 }
 
                 document.getElementById('user-avatar').src = escapeHtml(photoURL);
@@ -296,7 +289,7 @@
                     displayName = 'Неизвестный пользователь';
                 }
                 document.getElementById('user-display-name').textContent = escapeHtml(displayName);
-                document.getElementById('user-username').textContent = ''; // Убираем ID из отдельной строки
+                document.getElementById('user-username').textContent = '';
             } else {
                 const errorMessage = data.error || 'Неизвестная ошибка';
                 showMessageModal("Ошибка при получении профиля пользователя: " + escapeHtml(errorMessage));
@@ -319,14 +312,10 @@
         }
 
         let actualQuery = "";
-        // Если qInput не null и не undefined, приводим к строке и обрезаем пробелы.
-        // Иначе actualQuery останется пустой строкой.
         if (qInput !== null && qInput !== undefined) {
             actualQuery = String(qInput).trim();
         }
 
-        // Формируем строку запроса: если actualQuery пустая, то ?q= не добавляем.
-        // Если не пустая, то добавляем ?q= и закодированное значение.
         const queryString = actualQuery ? `?q=${encodeURIComponent(actualQuery)}` : "";
 
         fetch(`/api/user_galleries/${userID}${queryString}`)
@@ -427,9 +416,7 @@
             const data = await response.json();
 
             if (data.ok) {
-                // Преобразуем пути к изображениям для защищенного доступа
                 currentGalleryImages = data.images.map(imagePath => {
-                    // Удаляем начальный слэш, если он есть
                     if (imagePath.startsWith('/')) {
                         imagePath = imagePath.substring(1);
                     }
