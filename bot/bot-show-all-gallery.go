@@ -5,42 +5,40 @@ import (
 	"fmt"
 	"log"
 	"strings"
-	// Ваши другие импорты
 )
 
-// GetAllGalleries теперь принимает viewerUserID для определения статуса избранного
 func GetAllGalleries(db *sql.DB, viewerUserID int64, limit, offset int) ([]Gallery, error) {
 	log.Printf("🔍 Запрос всех галерей (limit=%d, offset=%d) для пользователя %d - Использование БД для метаданных изображений", limit, offset, viewerUserID)
 
 	var galleries []Gallery
 
 	query := `
-        SELECT
-            g.id,
-            g.name,
-            g.user_id,
-            g.created_at,
-            COALESCE(g.image_count, 0) AS image_count,
-            g.preview_url,
-            u.telegram_user_id,
-            u.telegram_username,
-            u.first_name,
-            u.last_name,
-            u.photo_url,
-            CASE WHEN f.user_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_favorite 
-        FROM
-            galleries g
-        JOIN
-            users u ON g.user_id = u.telegram_user_id
-        LEFT JOIN 
-            favorites f ON g.id = f.gallery_id AND f.user_id = $3 
-        ORDER BY
-            g.created_at DESC
-        LIMIT $1 OFFSET $2;
-    `
+		SELECT
+			g.id,
+			g.name,
+			g.user_id,
+			g.created_at,
+			COALESCE(g.image_count, 0) AS image_count,
+			g.preview_url,
+			u.telegram_user_id,
+			u.telegram_username,
+			u.first_name,
+			u.last_name,
+			u.photo_url,
+			CASE WHEN f.user_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_favorite
+		FROM
+			galleries g
+		JOIN
+			users u ON g.user_id = u.telegram_user_id
+		LEFT JOIN
+			favorites f ON g.id = f.gallery_id AND f.user_id = $3
+		ORDER BY
+			g.created_at DESC
+		LIMIT $1 OFFSET $2;
+	`
 	log.Printf("🔍 SQL-запрос для GetAllGalleries: %s", query)
 
-	rows, err := db.Query(query, limit, offset, viewerUserID) // <-- viewerUserID передается как $3
+	rows, err := db.Query(query, limit, offset, viewerUserID)
 	if err != nil {
 		log.Printf("❌ Ошибка запроса галерей: %v", err)
 		return nil, err
@@ -49,7 +47,7 @@ func GetAllGalleries(db *sql.DB, viewerUserID int64, limit, offset int) ([]Galle
 
 	for rows.Next() {
 		var g Gallery
-		var isFavorite bool // Для сканирования значения is_favorite
+		var isFavorite bool
 		if err := rows.Scan(
 			&g.ID,
 			&g.Name,
@@ -67,7 +65,7 @@ func GetAllGalleries(db *sql.DB, viewerUserID int64, limit, offset int) ([]Galle
 			log.Printf("❌ Ошибка чтения строки галереи: %v", err)
 			continue
 		}
-		g.IsFavorite = isFavorite // Присваиваем сканированное значение
+		g.IsFavorite = isFavorite
 
 		if g.PreviewURL == "" {
 			g.PreviewURL = "/static/no-image-placeholder.png"
@@ -103,7 +101,6 @@ func GetAllGalleries(db *sql.DB, viewerUserID int64, limit, offset int) ([]Galle
 	return galleries, nil
 }
 
-// GetGalleriesByTag теперь принимает viewerUserID для определения статуса избранного
 func GetGalleriesByTag(db *sql.DB, tagQuery string, viewerUserID int64, limit, offset int) ([]Gallery, error) {
 	log.Printf("🔎 Поиск галерей по тегу: %s (limit=%d, offset=%d) для пользователя %d - Использование БД для метаданных изображений", tagQuery, limit, offset, viewerUserID)
 
@@ -115,33 +112,33 @@ func GetGalleriesByTag(db *sql.DB, tagQuery string, viewerUserID int64, limit, o
 	}
 
 	query := `
-       SELECT
-           g.id,
-           g.name,
-           g.user_id,
-           g.created_at,
-           COALESCE(g.image_count, 0) AS image_count,
-           g.preview_url,
-           u.telegram_user_id,
-           u.telegram_username,
-           u.first_name,
-           u.last_name,
-           u.photo_url,
-           CASE WHEN f.user_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_favorite 
-       FROM
-           galleries g
-       JOIN tags t ON g.id = t.gallery_id
-       JOIN users u ON g.user_id = u.telegram_user_id
-       LEFT JOIN 
-           favorites f ON g.id = f.gallery_id AND f.user_id = $4 
-       WHERE LOWER(t.tag) LIKE '%' || $1 || '%'
-       GROUP BY
-           g.id, g.name, g.user_id, g.created_at, g.preview_url,
-           u.telegram_user_id, u.telegram_username, u.first_name, u.last_name, u.photo_url, is_favorite 
-       ORDER BY
-           g.created_at DESC
-       LIMIT $2 OFFSET $3;
-    `
+		SELECT
+			g.id,
+			g.name,
+			g.user_id,
+			g.created_at,
+			COALESCE(g.image_count, 0) AS image_count,
+			g.preview_url,
+			u.telegram_user_id,
+			u.telegram_username,
+			u.first_name,
+			u.last_name,
+			u.photo_url,
+			CASE WHEN f.user_id IS NOT NULL THEN TRUE ELSE FALSE END AS is_favorite
+		FROM
+			galleries g
+		JOIN tags t ON g.id = t.gallery_id
+		JOIN users u ON g.user_id = u.telegram_user_id
+		LEFT JOIN
+			favorites f ON g.id = f.gallery_id AND f.user_id = $4
+		WHERE LOWER(t.tag) LIKE '%' || $1 || '%'
+		GROUP BY
+			g.id, g.name, g.user_id, g.created_at, g.preview_url,
+			u.telegram_user_id, u.telegram_username, u.first_name, u.last_name, u.photo_url, is_favorite
+		ORDER BY
+			g.created_at DESC
+		LIMIT $2 OFFSET $3;
+	`
 	rows, err := db.Query(query, processedTagQuery, limit, offset, viewerUserID)
 	if err != nil {
 		log.Printf("❌ Ошибка выполнения запроса GetGalleriesByTag: %v", err)
@@ -206,7 +203,6 @@ func GetGalleriesByTag(db *sql.DB, tagQuery string, viewerUserID int64, limit, o
 	return galleries, nil
 }
 
-// GetGalleryImages - теперь запрашивает full_size_image_path
 func GetGalleryImages(db *sql.DB, galleryID int64) ([]string, error) {
 	log.Printf("🖼️ Запрос изображений для галереи ID: %d (из БД) - Получение full_size_image_path", galleryID)
 
