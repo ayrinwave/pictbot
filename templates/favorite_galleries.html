@@ -47,7 +47,6 @@
 </div>
 
 <script>
-    // --- Global Utility Functions (из index.html) ---
     function showMessageModal(message, callback) {
         const modal = document.getElementById('messageModal');
         const modalMessage = document.getElementById('messageModalText');
@@ -85,8 +84,7 @@
         }
     }
 
-    // --- DOM Elements (адаптировано для favorite_galleries.html) ---
-    const galleriesContentDiv = document.getElementById('galleriesContent'); // Замена galleryRoot
+    const galleriesContentDiv = document.getElementById('galleriesContent');
     const loadingSpinner = document.getElementById("loading-spinner");
 
     let currentGalleryImages = [];
@@ -95,12 +93,10 @@
     let telegramUserID = null;
     let globalInitData = null;
 
-    // Вспомогательная функция для безопасного получения значения из sql.NullString (из index.html)
     function getNullStringValue(nullStringObject) {
         return (nullStringObject && nullStringObject.Valid) ? nullStringObject.String : '';
     }
 
-    // Улучшенная функция escapeHtml для обработки null/undefined (из index.html)
     function escapeHtml(text) {
         if (text === null || text === undefined) {
             return '';
@@ -121,7 +117,7 @@
 
         if (loadingSpinner) {
             loadingSpinner.classList.remove('hidden');
-            galleriesContentDiv.innerHTML = ''; // Очищаем содержимое
+            galleriesContentDiv.innerHTML = '';
         }
 
         if (tg) {
@@ -151,11 +147,11 @@
                     if (data.ok) {
                         telegramUserID = data.user.id;
                         console.log("✅ Current Telegram user ID obtained:", telegramUserID);
-                        loadFavoriteGalleries(); // Вызываем специфичную для этой страницы функцию
+                        loadFavoriteGalleries();
 
                         const favoriteButton = document.getElementById('favorite-link-button');
                         if (favoriteButton) {
-                            favoriteButton.classList.add('hidden'); // Скрываем кнопку, так как мы уже на этой странице
+                            favoriteButton.classList.add('hidden');
                         }
                     } else {
                         console.warn("⚠️ Authentication failed on favorite_galleries page:", data.error);
@@ -181,7 +177,6 @@
         }
     });
 
-    // --- Специфичная функция для загрузки избранных галерей ---
     async function loadFavoriteGalleries() {
         if (loadingSpinner) {
             loadingSpinner.classList.remove('hidden');
@@ -219,7 +214,7 @@
             if (data.ok) {
                 if (Array.isArray(data.galleries) && data.galleries.length > 0) {
                     console.log("Избранные галереи для рендеринга:", data.galleries);
-                    renderGalleries(data.galleries); // Используем общую функцию рендеринга
+                    renderGalleries(data.galleries);
                 } else {
                     galleriesContentDiv.innerHTML = '<p class="no-galleries">У вас пока нет избранных галерей.</p>';
                 }
@@ -238,7 +233,6 @@
         }
     }
 
-
     function renderGalleries(galleries) {
         console.log("Данные галерей для рендеринга:", galleries);
 
@@ -250,9 +244,7 @@
         let html = `<div class="gallery-masonry-grid">`;
         galleries.forEach(gal => {
             let previewImageSrc = gal.previewURL;
-            // Если previewURL не пуст и не является заглушкой, добавляем префикс для защищенной отдачи
             if (previewImageSrc && previewImageSrc !== '/static/no-image-placeholder.png') {
-                // Удаляем начальный слэш, если он есть, так как его добавит /secured_gallery_images/
                 if (previewImageSrc.startsWith('/')) {
                     previewImageSrc = previewImageSrc.substring(1);
                 }
@@ -272,10 +264,7 @@
             if (!creatorPhotoURL) {
                 creatorPhotoURL = '/static/default_avatar.png';
             } else {
-                // Если creatorPhotoURL не внешний URL (http/https) и не data URI,
-                // добавляем префикс для защищенной отдачи
                 if (!creatorPhotoURL.startsWith('http://') && !creatorPhotoURL.startsWith('https://') && !creatorPhotoURL.startsWith('data:')) {
-                    // Удаляем начальный слэш, если он есть
                     if (creatorPhotoURL.startsWith('/')) {
                         creatorPhotoURL = creatorPhotoURL.substring(1);
                     }
@@ -294,10 +283,6 @@
                 displayName = 'Неизвестный';
             }
 
-            // Добавляем кнопку "Избранное" (теперь для удаления из избранного)
-            // ВАЖНО: для "Избранного" эта кнопка должна иметь обработчик удаления из избранного
-            // Предполагается, что 'toggleFavorite' или аналогичная функция будет вызываться
-            // с параметром 'true' для удаления, или логика будет внутри toggleFavorite.
             const favoriteButtonHtml = `
             <button class="favorite-button active" data-gallery-id="${gal.id}" aria-label="Удалить из избранного" onclick="toggleFavorite(this, event, true)">
                 &#9733;
@@ -330,12 +315,9 @@
         html += `</div>`;
         galleriesContentDiv.innerHTML = html;
 
-        // После рендеринга, инициализируем действия, такие как открытие слайдера
-        // и, если потребуется, действия для кнопок "удалить из избранного".
         initGalleryActions();
     }
 
-    // --- Функции для слайдера (из index.html) ---
     async function openGallerySlider(galleryID, startIndex = 0) {
         const modalImage = document.getElementById("modalImage");
         const captionText = document.getElementById("caption");
@@ -414,21 +396,17 @@
         modalImage.classList.remove('loading-gif-modal');
     }
 
-    // --- Обработчики событий для модального окна слайдера ---
     document.getElementById('closeMyModalBtn').addEventListener('click', closeModal);
     document.getElementById('prevSlideBtn').addEventListener('click', () => plusSlides(-1));
     document.getElementById('nextSlideBtn').addEventListener('click', () => plusSlides(1));
 
     document.getElementById('myModal').addEventListener('click', function(event) {
-        // Убедимся, что закрытие происходит только при клике на фон модала
         if (event.target === this) {
             closeModal();
         }
     });
 
-    // --- Действия с галереями после рендеринга ---
     function initGalleryActions() {
-        // Event listener for opening gallery slider (click on preview image)
         document.querySelectorAll(".gallery-preview").forEach(previewDiv => {
             previewDiv.addEventListener("click", (event) => {
                 const galleryID = previewDiv.dataset.galleryId;
@@ -441,10 +419,9 @@
             });
         });
 
-        // НОВЫЙ КОД: Обработчик для кнопок избранного (удаление из избранного)
         document.querySelectorAll(".favorite-button").forEach(button => {
             button.addEventListener("click", async (event) => {
-                event.stopPropagation(); // Предотвращаем открытие слайдера
+                event.stopPropagation();
                 const galleryID = button.dataset.galleryId;
 
                 if (!galleryID) {
@@ -453,14 +430,11 @@
                     return;
                 }
 
-                // Так как это страница избранных, кнопка всегда "активна"
-                // Клик по ней означает "удалить из избранного"
                 await removeGalleryFromFavorites(galleryID, button);
             });
         });
     }
 
-    // НОВАЯ ФУНКЦИЯ: Удаление галереи из избранных
     async function removeGalleryFromFavorites(galleryID, buttonElement) {
         if (!telegramUserID || !globalInitData) {
             showMessageModal("Ошибка: Пользователь не авторизован.");
@@ -479,7 +453,6 @@
 
             if (data.ok) {
                 showMessageModal("Галерея удалена из избранных.", () => {
-                    // Перезагружаем список избранных галерей, чтобы обновить UI
                     loadFavoriteGalleries();
                 });
             } else {
@@ -491,9 +464,8 @@
         }
     }
 
-    // НОВАЯ ФУНКЦИЯ: Переход на страницу галерей пользователя (из index.html)
     function viewUserGalleries(userID, event) {
-        event.stopPropagation(); // Остановить всплытие, чтобы не открывался слайдер галереи
+        event.stopPropagation();
         if (userID) {
             window.location.href = `/user_galleries?user_id=${userID}`;
         } else {
@@ -501,7 +473,6 @@
         }
     }
 
-    // --- Footer Navigation Functions (из index.html) ---
     function goToHomePage() {
         window.location.href = `/`;
     }
