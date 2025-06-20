@@ -1,0 +1,123 @@
+package server
+
+import (
+	"database/sql"
+	"encoding/json"
+	"fmt"
+	"github.com/gin-gonic/gin"
+	"io"
+	"log"
+	"net/http"
+	"os"
+	"path/filepath"
+)
+
+// GalleryResponse структура для ответа клиенту
+type GalleryResponse struct {
+	Name       string `json:"name"`
+	ImageCount int    `json:"imageCount"`
+}
+
+// Обработчик для добавления новой галереи
+func handleAddGallery(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Только POST метод поддерживается", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Разбираем данные из формы
+	err := r.ParseMultipartForm(10 << 20) // 10 MB
+	if err != nil {
+		http.Error(w, "Ошибка обработки данных формы", http.StatusBadRequest)
+		return
+	}
+
+	// Получаем имя галереи
+	galleryName := r.FormValue("galleryName")
+	if galleryName == "" {
+		http.Error(w, "Название галереи не указано", http.StatusBadRequest)
+		return
+	}
+
+	// Создаем папку для галереи
+	galleryPath := filepath.Join("uploads", galleryName)
+	err = os.MkdirAll(galleryPath, os.ModePerm)
+	if err != nil {
+		http.Error(w, "Ошибка создания папки галереи", http.StatusInternalServerError)
+		return
+	}
+
+	// Сохраняем изображения
+	files := r.MultipartForm.File["galleryImages"]
+	for _, fileHeader := range files {
+		file, err := fileHeader.Open()
+		if err != nil {
+			http.Error(w, "Ошибка открытия файла", http.StatusInternalServerError)
+			return
+		}
+		defer file.Close()
+
+		imagePath := filepath.Join(galleryPath, fileHeader.Filename)
+		out, err := os.Create(imagePath)
+		if err != nil {
+			http.Error(w, "Ошибка сохранения файла", http.StatusInternalServerError)
+			return
+		}
+		defer out.Close()
+
+		_, err = io.Copy(out, file)
+		if err != nil {
+			http.Error(w, "Ошибка копирования файла", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Сохраняем информацию в базу данных
+	_, err = db.Exec("INSERT INTO galleries (name, image_count) VALUES ($1, $2)", galleryName, len(files))
+	if err != nil {
+		http.Error(w, "Ошибка записи в базу данных", http.StatusInternalServerError)
+		return
+	}
+
+	// Ответ клиенту
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": fmt.Sprintf("Галерея '%s' успешно создана", galleryName),
+	})
+}
+
+// Route for handling gallery creation
+func addGallery(c *gin.Context) {
+	galleryName := c.PostForm("galleryName")
+	form, _ := c.MultipartForm()
+	files := form.File["galleryImages"]
+
+	if galleryName == "" || len(files) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": "Название галереи или изображения отсутствуют.",
+		})
+		return
+	}
+
+	galleryPath := fmt.Sprintf("uploads/%s", galleryName)
+	err := os.MkdirAll(galleryPath, os.ModePerm)
+	if err != nil {
+		log.Printf("Ошибка при создании директории: %v", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка при создании директории."})
+		return
+	}
+
+	for _, file := range files {
+		filePath := fmt.Sprintf("%s/%s", galleryPath, file.Filename)
+		if err := c.SaveUploadedFile(file, filePath); err != nil {
+			log.Printf("Ошибка сохранения файла: %v", err)
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "Ошибка сохранения файла."})
+			return
+		}
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":    galleryName,
+		"imageCount": len(files),
+	})
+}

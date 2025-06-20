@@ -1,0 +1,163 @@
+// package bot
+//
+// import (
+//
+//	db2 "Golang_Web_App_Bot/db"
+//	"database/sql"
+//	"fmt"
+//	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+//	"log"
+//
+// )
+//
+//	func HandleTelegramUpdates(bot *tgbotapi.BotAPI, db *sql.DB) {
+//		// Храним информацию о пользователях в рамках текущей сессии
+//		userStartCount := make(map[int64]int)
+//		// Настройка обновлений
+//		u := tgbotapi.NewUpdate(0)
+//		u.Timeout = 60
+//
+//		// Получаем канал обновлений
+//		updates := bot.GetUpdatesChan(u)
+//
+//		for update := range updates {
+//			if update.Message != nil { // Обрабатываем только сообщения
+//				userID := update.Message.From.ID
+//				userName := update.Message.From.UserName
+//				command := update.Message.Command()
+//
+//				// Если команда - /start
+//				if command == "start" {
+//					userStartCount[userID]++
+//					// Увеличиваем счётчик для пользователя
+//
+//					var responseText string
+//
+//					// Если пользователь ввёл /start впервые в текущей сессии
+//					if userStartCount[userID] == 1 {
+//						err := db2.AddUserToDB(db, userID, userName)
+//						if err != nil {
+//							log.Printf("Ошибка при добавлении пользователя в базу данных: %v", err)
+//						}
+//
+//						responseText = fmt.Sprintf("Добро пожаловать @%s! Я помогаю вам с загрузкой, генерацией и созданием галерей!", userName)
+//					} else {
+//						// Для повторных обращений в текущей сессии
+//						responseText = fmt.Sprintf("Рад снова видеть @%s! Я полностью в вашем распоряжении.", userName)
+//					}
+//
+//					// Создаём клавиатуру с кнопками
+//					mainKeyboard := tgbotapi.NewReplyKeyboard(
+//						tgbotapi.NewKeyboardButtonRow(
+//							tgbotapi.NewKeyboardButton("/start"),
+//							tgbotapi.NewKeyboardButton("/help"),
+//						),
+//					)
+//					mainKeyboard.OneTimeKeyboard = false
+//					mainKeyboard.ResizeKeyboard = true
+//
+//					// Отправляем сообщение с клавиатурой
+//					msg := tgbotapi.NewMessage(update.Message.Chat.ID, responseText)
+//					msg.ReplyMarkup = mainKeyboard
+//
+//					if _, err := bot.Send(msg); err != nil {
+//						log.Printf("Ошибка при отправке сообщения: %v", err)
+//					}
+//				} else if command == "help" {
+//					var responseText1 = "Этот бот позволяет загружать, генерировать картинки и создавать галереи, где Вы сможете хранить ваши работы! " +
+//						"Также присутствует взаимодействие с соц. сетями для публикации! " +
+//						"Приятного пользования!"
+//
+//					// Отправляем сообщение с информацией о боте
+//					msg := tgbotapi.NewMessage(update.Message.Chat.ID, responseText1)
+//					if _, err := bot.Send(msg); err != nil {
+//						log.Printf("Ошибка при отправке сообщения: %v", err)
+//					}
+//
+//				}
+//			}
+//		}
+//	}
+package bot
+
+import (
+	db2 "Golang_Web_App_Bot/db"
+	"database/sql"
+	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"log"
+)
+
+func HandleTelegramUpdates(bot *tgbotapi.BotAPI, db *sql.DB) {
+	// Храним информацию о пользователях в рамках текущей сессии
+	userStartCount := make(map[int64]int)
+	// Настройка обновлений
+	u := tgbotapi.NewUpdate(0)
+	u.Timeout = 60
+
+	// Получаем канал обновлений
+	updates := bot.GetUpdatesChan(u)
+
+	for update := range updates {
+		if update.Message != nil { // Обрабатываем только сообщения
+			userID := update.Message.From.ID
+			userName := update.Message.From.UserName
+			command := update.Message.Command()
+
+			// Логируем информацию о команде
+			log.Printf("Received command: %s from user: %s (%d)", command, userName, userID)
+
+			// Если команда - /start
+			if command == "start" {
+				userStartCount[userID]++
+				// Увеличиваем счётчик для пользователя
+
+				var responseText string
+
+				// Если пользователь ввёл /start впервые в текущей сессии
+				if userStartCount[userID] == 1 {
+					err := db2.AddUserToDB(db, userID, userName)
+					if err != nil {
+						log.Printf("Ошибка при добавлении пользователя в базу данных: %v", err)
+						responseText = "Произошла ошибка при добавлении вас в базу данных."
+					} else {
+						responseText = fmt.Sprintf("Добро пожаловать @%s! Я помогаю вам с загрузкой, генерацией и созданием галерей!", userName)
+					}
+				} else {
+					// Для повторных обращений в текущей сессии
+					responseText = fmt.Sprintf("Рад снова видеть @%s! Я полностью в вашем распоряжении.", userName)
+				}
+
+				// Создаём клавиатуру с кнопками
+				mainKeyboard := tgbotapi.NewReplyKeyboard(
+					tgbotapi.NewKeyboardButtonRow(
+						tgbotapi.NewKeyboardButton("/start"),
+						tgbotapi.NewKeyboardButton("/help"),
+					),
+				)
+				mainKeyboard.OneTimeKeyboard = false
+				mainKeyboard.ResizeKeyboard = true
+
+				// Отправляем сообщение с клавиатурой
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, responseText)
+				msg.ReplyMarkup = mainKeyboard
+
+				if _, err := bot.Send(msg); err != nil {
+					log.Printf("Ошибка при отправке сообщения: %v", err)
+				}
+			} else if command == "help" {
+				var responseText1 = "Этот бот позволяет загружать, генерировать картинки и создавать галереи, где Вы сможете хранить ваши работы! " +
+					"Также присутствует взаимодействие с соц. сетями для публикации! " +
+					"Приятного пользования!"
+
+				// Отправляем сообщение с информацией о боте
+				msg := tgbotapi.NewMessage(update.Message.Chat.ID, responseText1)
+				if _, err := bot.Send(msg); err != nil {
+					log.Printf("Ошибка при отправке сообщения: %v", err)
+				}
+			} else {
+				log.Printf("Неизвестная команда: %s от пользователя %s", command, userName)
+			}
+		}
+	}
+}

@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Галерея</title>
+    <link rel="stylesheet" href="static/style-for-index.css?v=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+<div class="background">
+    <div class="title">PictBot</div>
+
+    <div class="search-container">
+        <input type="text" class="search-bar" placeholder="Поиск по тегам...">
+    </div>
+
+    <div id="gallery-root">
+        <div id="loading-spinner">
+            <img src="static/loading.gif" alt="Загрузка..." class="loading-gif">
+            <p>Загрузка галерей...</p> </div>
+    </div>
+
+    <div class="footer">
+        <button onclick="goToHomePage()">На главную</button>
+        <button onclick="createGallery()">Создать галерею</button>
+        <button onclick="viewMyGalleries()">Мои галереи</button>
+        <button onclick="viewMySubscriptions()">Мои подписки</button>
+        <button onclick="viewFavoriteGalleries()">Избранное</button>
+    </div>
+</div>
+
+<div id="myModal" class="modal">
+    <span class="close" onclick="closeModal()">&times;</span>
+    <div class="modal-content-wrapper">
+        <img class="modal-content" id="modalImage">
+        <a class="prev" onclick="plusSlides(-1)">&#10094;</a>
+        <a class="next" onclick="plusSlides(1)">&#10095;</a>
+        <div id="caption"></div>
+    </div>
+</div>
+
+<div id="messageModal" class="modal">
+    <div class="modal-content">
+        <span id="closeMessageModal" class="close" onclick="closeMessageModal()">&times;</span>
+        <p id="messageModalText"></p>
+        <button id="messageModalOkBtn" class="modal-button">ОК</button>
+    </div>
+</div>
+
+<script src="static/index.js"></script>
+</body>
+</html>
