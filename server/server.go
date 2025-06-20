@@ -23,15 +23,13 @@ func ensureUploadsDir(path string) {
 		if err != nil {
 			log.Fatalf("Не удалось создать папку uploads: %v", err)
 		}
-		log.Println("🗂️  Папка uploads была создана.")
+		log.Println("🗂️ Папка uploads была создана.")
 	}
 }
 
-// StartServer запускает веб-сервер Gin
 func StartServer(db *sql.DB, botToken string) {
-
 	router := gin.Default()
-	router.MaxMultipartMemory = 100 << 20 // 100MB
+	router.MaxMultipartMemory = 100 << 20
 	router.LoadHTMLGlob("templates/*.html")
 
 	router.Static("/static", "./templates/static")
@@ -43,9 +41,8 @@ func StartServer(db *sql.DB, botToken string) {
 	}
 	tgBotAPI.Debug = false
 	log.Printf("✅ Бот авторизован как %s", tgBotAPI.Self.UserName)
-	router.POST("/auth", AuthHandler(db, botToken, tgBotAPI)) // Убедитесь, что AuthHandler находится в пакете bot
+	router.POST("/auth", AuthHandler(db, botToken, tgBotAPI))
 
-	// НОВЫЙ МАРШРУТ: API для получения профиля пользователя по ID
 	router.GET("/api/user_profile/:userID", func(c *gin.Context) {
 		userIDStr := c.Param("userID")
 		userID, err := strconv.ParseInt(userIDStr, 10, 64)
@@ -54,7 +51,7 @@ func StartServer(db *sql.DB, botToken string) {
 			return
 		}
 
-		user, err := bot.GetUserProfileByID(db, userID) // Вам нужно реализовать эту функцию
+		user, err := bot.GetUserProfileByID(db, userID)
 		if err != nil {
 			log.Printf("❌ Ошибка получения профиля пользователя ID %d: %v", userID, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": "Не удалось загрузить профиль пользователя"})
@@ -67,7 +64,6 @@ func StartServer(db *sql.DB, botToken string) {
 		})
 	})
 
-	// НОВЫЙ МАРШРУТ: API для получения галерей конкретного пользователя по ID
 	router.GET("/api/user_galleries/:userID", func(c *gin.Context) {
 		userIDStr := c.Param("userID")
 		userID, err := strconv.ParseInt(userIDStr, 10, 64)
@@ -78,7 +74,6 @@ func StartServer(db *sql.DB, botToken string) {
 
 		searchQuery := c.Query("q")
 
-		// --- Извлечение viewerUserID для избранного статуса ---
 		var viewerUserID int64 = 0
 		initDataRaw := c.GetHeader("X-Telegram-Init-Data")
 		if initDataRaw != "" {
@@ -87,16 +82,13 @@ func StartServer(db *sql.DB, botToken string) {
 			} else {
 				if parsedData, parseErr := initdata.Parse(initDataRaw); parseErr != nil {
 					log.Printf("⚠️ /api/user_galleries: Ошибка парсинга валидного initData: %v. Продолжаем без viewerUserID.", parseErr)
-				} else if parsedData.User.ID != 0 { // <-- ИЗМЕНЕНО ЗДЕСЬ
+				} else if parsedData.User.ID != 0 {
 					viewerUserID = parsedData.User.ID
 				}
 			}
 		}
-		// --- Конец извлечения viewerUserID ---
 
-		// Вам нужно реализовать GetGalleriesByUserID в пакете bot,
-		// которая теперь должна принимать viewerUserID
-		galleries, fetchErr := bot.GetGalleriesByUserID(db, userID, searchQuery, viewerUserID) // <-- viewerUserID передан
+		galleries, fetchErr := bot.GetGalleriesByUserID(db, userID, searchQuery, viewerUserID)
 		if fetchErr != nil {
 			log.Printf("❌ Ошибка получения галерей для пользователя ID %d: %v", userID, fetchErr)
 			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": "Не удалось загрузить галереи пользователя"})
@@ -117,8 +109,7 @@ func StartServer(db *sql.DB, botToken string) {
 			return
 		}
 
-		// `GetGalleryImages` теперь возвращает пути типа "gallery_images/123/image_hash_full.jpg"
-		imageDBPaths, err := bot.GetGalleryImages(db, galleryID) // bot.GetGalleryImages - это ваша функция
+		imageDBPaths, err := bot.GetGalleryImages(db, galleryID)
 		if err != nil {
 			log.Printf("❌ Ошибка получения изображений для галереи ID %d: %v", galleryID, err)
 			c.JSON(http.StatusInternalServerError, gin.H{"ok": false, "error": "Не удалось загрузить изображения галереи"})
@@ -127,9 +118,7 @@ func StartServer(db *sql.DB, botToken string) {
 
 		var fullImageURLs []string
 		for _, dbPath := range imageDBPaths {
-			// Формируем URL для фронтенда, используя новый безопасный префикс
-			// Этот префикс должен соответствовать роуту, который вы создадите для отдачи файлов
-			fullImageURLs = append(fullImageURLs, "/secured_gallery_images/"+dbPath) // <-- Изменено
+			fullImageURLs = append(fullImageURLs, "/secured_gallery_images/"+dbPath)
 		}
 
 		c.JSON(http.StatusOK, gin.H{
@@ -137,12 +126,10 @@ func StartServer(db *sql.DB, botToken string) {
 			"images": fullImageURLs,
 		})
 	})
-	// Добавляем новый обработчик для безопасной отдачи файлов
-	// Он будет принимать URL вида /secured_gallery_images/gallery_images/123/image.jpg
-	router.GET("/secured_gallery_images/*filepath", func(c *gin.Context) {
-		requestedPath := strings.TrimPrefix(c.Param("filepath"), "/") // Удаляем начальный слэш, если есть
 
-		// **Важная проверка безопасности:** предотвращение обхода директорий.
+	router.GET("/secured_gallery_images/*filepath", func(c *gin.Context) {
+		requestedPath := strings.TrimPrefix(c.Param("filepath"), "/")
+
 		cleanPath := filepath.Clean(requestedPath)
 
 		if strings.HasPrefix(cleanPath, "..") {
@@ -151,9 +138,7 @@ func StartServer(db *sql.DB, botToken string) {
 			return
 		}
 
-		// Формируем полный физический путь к файлу на сервере.
-		// 'uploads' - это базовая директория, где лежат все ваши загрузки.
-		fullFilePath := filepath.Join(UPLOADS_BASE_PATH_FOR_WRITING, cleanPath) // UPLOADS_BASE_PATH_FOR_WRITING
+		fullFilePath := filepath.Join(UPLOADS_BASE_PATH_FOR_WRITING, cleanPath)
 
 		if _, err := os.Stat(fullFilePath); os.IsNotExist(err) {
 			log.Printf("❌ Запрошенный файл не найден: %s (полный путь: %s)", requestedPath, fullFilePath)
@@ -175,15 +160,13 @@ func StartServer(db *sql.DB, botToken string) {
 		authorized.DELETE("/subscription/:targetUserID", bot.UnsubscribeHandler(db))
 		authorized.GET("/my_subscriptions", bot.GetSubscribedUsersHandler(db))
 		authorized.GET("/my_favorite_galleries", bot.GetFavoriteGalleriesHandler(db))
-		authorized.POST("/favorites/:galleryID", bot.AddFavoriteHandler(db)) // Добавить в избранное
+		authorized.POST("/favorites/:galleryID", bot.AddFavoriteHandler(db))
 		authorized.DELETE("/favorites/:galleryID", bot.RemoveFavoriteHandler(db))
 
 	}
-	// Главная страница
 	router.GET("/", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "index.html", gin.H{})
 	})
-	// НОВЫЙ МАРШРУТ: Страница галерей пользователя
 	router.GET("/user_galleries", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "user_galleries.html", gin.H{})
 	})
@@ -199,16 +182,13 @@ func StartServer(db *sql.DB, botToken string) {
 	router.GET("/view_gallery", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "view_gallery.html", gin.H{})
 	})
-	// НОВЫЙ МАРШРУТ для страницы "Мои подписки"
 	router.GET("/my_subscriptions", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "subscribed-users.html", nil)
 	})
-	// НОВЫЙ МАРШРУТ для страницы "Избранные галереи"
 	router.GET("/favorite_galleries", func(c *gin.Context) {
 		c.HTML(http.StatusOK, "favorite_galleries.html", nil)
 	})
-	// API для получения всех галерей (с пагинацией и поиском)
-	router.GET("/api/galleries", GetGalleriesHandler(db, botToken)) // <--- УБЕДИТЕСЬ, ЧТО ЭТА СТРОКА ЕСТЬ И НЕ ЗАКОММЕНТИРОВАНА
+	router.GET("/api/galleries", GetGalleriesHandler(db, botToken))
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -243,12 +223,10 @@ func GetGalleriesHandler(db *sql.DB, botToken string) gin.HandlerFunc {
 			log.Printf("⚠️ Неверное значение offset '%s', использую по умолчанию %d", offsetStr, offset)
 		}
 
-		// --- Извлечение user ID из initData ---
-		var viewerUserID int64 = 0 // Значение по умолчанию, если не авторизован
+		var viewerUserID int64 = 0
 		initDataRaw := c.GetHeader("X-Telegram-Init-Data")
 		if initDataRaw != "" {
-			// Валидация initData с использованием botToken
-			err = initdata.Validate(initDataRaw, botToken, 24*time.Hour) // 24 часа - пример, настройте по необходимости
+			err = initdata.Validate(initDataRaw, botToken, 24*time.Hour)
 			if err != nil {
 				log.Printf("⚠️ GetGalleriesHandler: Ошибка валидации initData: %v. Продолжаем без user ID.", err)
 
@@ -256,7 +234,7 @@ func GetGalleriesHandler(db *sql.DB, botToken string) gin.HandlerFunc {
 				parsedInitData, parseErr := initdata.Parse(initDataRaw)
 				if parseErr != nil {
 					log.Printf("⚠️ GetGalleriesHandler: Ошибка парсинга валидного initData: %v. Продолжаем без user ID.", parseErr)
-				} else if parsedInitData.User.ID != 0 { // <-- ИЗМЕНЕНО: Проверяем User.ID != 0
+				} else if parsedInitData.User.ID != 0 {
 					viewerUserID = parsedInitData.User.ID
 					log.Printf("✅ GetGalleriesHandler: Получен viewerUserID: %d из initData.", viewerUserID)
 				} else {
@@ -266,16 +244,13 @@ func GetGalleriesHandler(db *sql.DB, botToken string) gin.HandlerFunc {
 		} else {
 			log.Println("ℹ️ GetGalleriesHandler: Заголовок X-Telegram-Init-Data отсутствует. Галереи будут загружены без учета избранного статуса.")
 		}
-		// --- Конец извлечения user ID ---
 
 		var galleries []bot.Gallery
 		var fetchErr error
 
 		if searchQuery != "" {
-			// ИЗМЕНЕНО: Передаем viewerUserID в функцию GetGalleriesByTag
 			galleries, fetchErr = bot.GetGalleriesByTag(db, searchQuery, viewerUserID, limit, offset)
 		} else {
-			// ИЗМЕНЕНО: Передаем viewerUserID в функцию GetAllGalleries
 			galleries, fetchErr = bot.GetAllGalleries(db, viewerUserID, limit, offset)
 		}
 
