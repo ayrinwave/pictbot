@@ -1,0 +1,697 @@
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent; /* Убирает подсветку при тапе на мобильных */
+}
+
+body {
+    font-family: 'Roboto', Arial, sans-serif;
+    background: #f0f2f5; /* Светло-серый фон как в Pinterest */
+    color: #333; /* Темный текст */
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px; /* Общий паддинг для страницы */
+    display: block;
+    padding-bottom: 80px; /* Отступ снизу для футера */
+}
+
+/* Основной контейнер, который обертывает весь контент и центрирует его */
+.background {
+    padding: 0;
+    max-width: 1200px; /* Максимальная ширина контента */
+    margin: 0 auto; /* Центрируем контейнер */
+}
+
+/* Заголовок страницы "Мои галереи" */
+.title {
+    font-size: 40px !important; /* УВЕЛИЧЕННЫЙ РАЗМЕР ЗАГОЛОВКА */
+    font-weight: bold;
+    color: #333;
+    text-align: center; /* Заголовок по центру */
+    margin-bottom: 30px;
+    padding-top: 20px; /* Отступ сверху */
+    width: 100%; /* Убедимся, что заголовок занимает всю ширину */
+    display: block; /* Убедимся, что он блочный элемент */
+}
+
+/* Строка поиска */
+.search-container {
+    width: 100%;
+    max-width: 450px; /* Ограничиваем ширину для лучшего вида */
+    margin: 0 auto 30px auto; /* Центрируем и добавляем отступ снизу */
+    text-align: center; /* На всякий случай */
+}
+
+.search-bar {
+    width: 100%;
+    height: 50px;
+    border: 1px solid #ddd; /* Более светлая рамка */
+    border-radius: 25px; /* Сильнее скругленные углы */
+    padding: 0 15px;
+    font-size: 16px;
+    outline: none;
+    transition: border-color 0.3s ease, box-shadow 0.3s ease;
+    background-color: #fff; /* Белый фон */
+    color: #333;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* Легкая тень */
+}
+
+.search-bar:focus {
+    border-color: #007bff;
+    box-shadow: 0 0 0 3px rgba(0, 123, 255, 0.25);
+}
+
+/* --- Gallery Grid (ОСНОВНАЯ СЕТКА) --- */
+.gallery-masonry-grid {
+    display: grid; /* Используем CSS Grid */
+    /* СТРОГО ДВЕ КОЛОНКИ: каждая занимает равное пространство */
+    grid-template-columns: repeat(2, 1fr);
+    gap: 15px; /* Расстояние между элементами сетки */
+    margin-top: 20px;
+    padding: 0 10px; /* Боковые отступы для сетки */
+}
+
+.gallery-item {
+    background-color: #fff;
+    border-radius: 10px; /* Скругленные углы для карточек */
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1); /* Мягкая тень как у пинов */
+    padding: 10px; /* Внутренний отступ */
+    cursor: pointer;
+    transition: box-shadow 0.2s ease; /* Анимируем только тень */
+    text-align: left; /* Текст выравнивается по левому краю */
+    color: #333;
+    position: relative; /* Для позиционирования оверлея или других элементов */
+    display: flex; /* Используем flexbox для внутреннего содержимого */
+    flex-direction: column; /* Элементы внутри будут располагаться в столбец */
+    text-decoration: none; /* Убираем подчеркивание у ссылки */
+
+    /* ВАЖНО: Фиксированная высота для всех карточек - НАСТРОЙТЕ ЭТО ЗНАЧЕНИЕ */
+    height: 380px;
+}
+
+.gallery-item:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2); /* Более выраженная тень при наведении */
+}
+
+.gallery-item h2 {
+    font-size: 1.1em; /* Размер шрифта для названия галереи */
+    font-weight: bold;
+    color: #333;
+    margin: 5px 0 10px 0;
+    padding: 0;
+    word-break: break-word; /* Перенос длинных слов */
+}
+
+/* Контейнер для ОДНОГО изображения превью (верхнее изображение пина) */
+.gallery-preview {
+    width: 100%;
+    flex-grow: 1; /* Позволяет превью занимать максимум доступного места */
+    overflow: hidden; /* Скрываем все, что выходит за границы */
+    border-radius: 8px; /* Скругление углов для всей области превью */
+    margin-bottom: 5px; /* Отступ от превью до деталей/кнопки */
+    position: relative; /* Для overlay, если вдруг понадобится */
+    display: flex; /* Для центрирования изображения внутри */
+    justify-content: center;
+    align-items: center;
+}
+
+.gallery-preview-image {
+    width: 100%;
+    height: 100%; /* Занимает всю высоту родительского контейнера */
+    display: block;
+    border-radius: 8px; /* Скругление углов для изображения */
+    object-fit: cover; /* Изображение будет покрывать контейнер, обрезая лишнее */
+}
+
+/* Если изображений нет, заглушка */
+.gallery-preview-image.no-image-placeholder {
+    object-fit: contain; /* Изображение будет целиком видно */
+    background-color: #f0f0f0; /* Светлый фон для заглушки */
+    padding: 10px; /* Отступ внутри заглушки */
+    height: 100%; /* Занимает всю высоту */
+    width: 100%;
+}
+
+/* Оверлей для количества дополнительных изображений (+N) - скрыт, если не используется */
+.gallery-tile-more-overlay {
+    display: none; /* Скрыть, если не используется */
+}
+
+/* Контейнер для тегов и счетчика */
+.gallery-details {
+    padding-top: 5px;
+    margin-top: auto; /* Прижимает блок к низу flex-контейнера gallery-item */
+    font-size: 0.9em;
+    color: #666;
+    text-align: left; /* Теги обычно слева */
+}
+
+.tags {
+    margin-bottom: 5px;
+}
+
+.tags p {
+    margin: 0;
+    /* УДАЛЕНО: font-size: 0.85em; - размер шрифта будет наследован или установлен в .tag */
+    color: #666;
+    display: flex; /* Делаем flex-контейнером */
+    align-items: baseline; /* Выравнивание элементов по базовой линии */
+    flex-wrap: wrap; /* Позволяем элементам переноситься на новую строку, если не помещаются */
+}
+
+.tag-list {
+    display: block; /* Список тегов в отдельной строке */
+    margin-top: 3px;
+    white-space: normal; /* Разрешаем перенос тегов */
+    word-break: break-word; /* Перенос длинных слов в тегах */
+}
+
+.tag {
+    display: inline-block;
+    background-color: #eee;
+    color: #555;
+    padding: 3px 6px;
+    border-radius: 4px;
+    margin: 2px 4px 2px 0;
+    font-size: 1em;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.tag:hover {
+    background-color: #ddd;
+}
+
+
+.no-tags {
+    font-style: italic;
+    color: #888;
+    font-size: 0.8em;
+}
+
+.gallery-tile-count {
+    display: block;
+    margin-top: 5px;
+    font-weight: bold;
+    color: #555;
+    font-size: 1em;
+}
+
+/* Кнопка удаления */
+.delete-gallery {
+    display: block; /* Делаем кнопку блочной */
+    width: calc(100% - 20px); /* Ширина с учетом паддинга родителя */
+    margin: 10px auto 0 auto; /* Центрируем и отступ снизу */
+    padding: 12px 20px !important; /* УВЕЛИЧЕННЫЙ PADDING для кнопки */
+    background-color: #dc3545; /* Красный цвет для удаления */
+    color: white;
+    border: none;
+    border-radius: 10px; /* Немного больше скругление */
+    cursor: pointer;
+    font-size: 1.1em; /* УВЕЛИЧЕННЫЙ РАЗМЕР ШРИФТА для кнопки */
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    text-align: center;
+}
+
+.delete-gallery:hover {
+    background-color: #c82333;
+    transform: translateY(-2px);
+}
+
+.delete-gallery:active {
+    transform: translateY(0);
+}
+
+/* Сообщение "У вас пока нет галерей." */
+.no-galleries {
+    text-align: center;
+    color: #666;
+    font-size: 1.1em;
+    margin-top: 50px;
+    padding: 20px; /* Немного паддинга для сообщения */
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* --- Кнопка "На главную" --- */
+.back {
+    display: block; /* Важно, чтобы была блочной для margin: auto */
+    width: fit-content; /* Ширина по содержимому */
+    margin: 30px auto; /* Центрируем и отступ сверху/снизу */
+    padding: 10px 25px;
+    background-color: #007bff; /* Основной синий цвет */
+    color: white;
+    text-decoration: none; /* Убираем подчеркивание */
+    border-radius: 25px;
+    font-size: 1.1em;
+    font-weight: bold;
+    transition: background-color 0.2s ease, transform 0.1s ease;
+    box-shadow: 0 2px 5px rgba(0,123,255,0.2);
+    text-align: center; /* Центрируем текст внутри кнопки */
+}
+
+.back:hover {
+    background-color: #0056b3;
+    transform: translateY(-2px);
+}
+
+.back:active {
+    transform: translateY(0);
+}
+
+/* --- МОДАЛЬНЫЕ ОКНА (ОБЩИЕ СТИЛИ) --- */
+.modal {
+    display: none; /* Скрыто по умолчанию */
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden; /* Скрываем скроллбар, если изображение слишком велико */
+    background-color: rgba(0, 0, 0, 0.9); /* Полупрозрачный черный фон */
+    justify-content: center; /* Центрируем содержимое по горизонтали */
+    align-items: center;   /* Центрируем содержимое по вертикали */
+}
+
+.modal-content-wrapper {
+    display: flex; /* Используем flex для расположения изображения и кнопок */
+    align-items: center;
+    justify-content: center;
+    max-width: 90%;
+    max-height: 90vh;
+    position: relative; /* Для позиционирования кнопок и подписи */
+}
+
+.modal-content {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain; /* Изображение будет целиком видно */
+    border-radius: 10px; /* Скругленные углы */
+    animation: zoomIn 0.3s ease-in-out; /* Анимация появления */
+}
+
+/* Анимация появления изображения */
+@keyframes zoomIn {
+    from {
+        transform: scale(0.8);
+        opacity: 0;
+    }
+    to {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.close {
+    position: absolute;
+    top: 20px;
+    right: 40px;
+    color: white;
+    font-size: 40px;
+    font-weight: bold;
+    cursor: pointer;
+    transition: 0.3s;
+    z-index: 1001; /* Поверх всего */
+}
+
+.close:hover,
+.close:focus {
+    color: #bbb;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Кнопки навигации в модальном окне */
+.prev, .next {
+    cursor: pointer;
+    position: absolute;
+    top: 50%;
+    width: auto;
+    padding: 16px;
+    margin-top: -25px; /* Смещение вверх на половину высоты кнопки */
+    color: white;
+    font-weight: bold;
+    font-size: 20px;
+    transition: 0.6s ease;
+    border-radius: 0 3px 3px 0;
+    user-select: none;
+    -webkit-user-select: none;
+    background-color: rgba(0,0,0,0.5); /* Полупрозрачный фон для кнопок */
+}
+/* Стили для контейнера спиннера */
+#loading-spinner {
+    display: flex; /* Используем flexbox для центрирования содержимого */
+    flex-direction: column; /* Элементы внутри будут располагаться в столбец (гифка сверху, текст снизу) */
+    align-items: center; /* Центрируем по горизонтали */
+    justify-content: center; /* Центрируем по вертикали */
+    min-height: 200px; /* Минимальная высота, чтобы спиннер был виден, даже если контента мало */
+    width: 100%;
+    text-align: center;
+    color: #666;
+    font-size: 1.1em;
+    margin-top: 50px; /* Отступ сверху, чтобы не прилипало к заголовку */
+}
+
+/* Стили для самой гифки */
+.loading-gif {
+    width: 50px; /* Размер вашей гифки */
+    height: 50px;
+    margin-bottom: 15px; /* Отступ между гифкой и текстом "Загрузка..." */
+}
+
+/* Стили для скрытия/показа спиннера */
+.hidden {
+    display: none !important;
+}
+
+/* Стили для гифки загрузки в модальном окне */
+.modal-content.loading-gif-modal {
+    width: 80px; /* Размер спиннера в модальном окне */
+    height: 80px;
+    object-fit: contain; /* Чтобы гифка не обрезалась, если она не квадратная */
+    /* Дополнительные стили, чтобы гифка центрировалась и не растягивалась */
+    max-width: 100%;
+    max-height: 100%;
+}
+/* Расположение кнопок */
+.prev {
+    left: 0;
+    border-radius: 3px 0 0 3px;
+}
+
+.next {
+    right: 0;
+    border-radius: 0 3px 3px 0; /* Правильный радиус для правой кнопки */
+}
+
+/* При наведении на кнопки */
+.prev:hover, .next:hover {
+    background-color: rgba(0,0,0,0.8);
+}
+
+/* Подпись к изображению */
+#caption {
+    color: #f2f2f2;
+    font-size: 14px; /* Изменено с 15px */
+    padding: 6px 10px; /* Уменьшен паддинг для компактности */
+    position: absolute;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%); /* Точное горизонтальное центрирование */
+    text-align: center;
+    background-color: rgba(0, 0, 0, 0.6); /* Немного темнее фон для лучшей читаемости */
+    border-radius: 5px;
+    max-width: 300px; /* Ограничиваем максимальную ширину для компактности */
+    box-sizing: border-box; /* Важно для правильного расчета ширины с padding */
+    white-space: nowrap; /* Предотвращаем перенос строки, если текст короткий */
+    overflow: hidden; /* Скрываем, если текст не помещается */
+    text-overflow: ellipsis; /* Добавляем многоточие, если текст обрезается */
+}
+
+/* Сетка изображений внутри открытой галереи (если у вас есть такой режим) */
+.image-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr)); /* Миниатюры 80px */
+    gap: 5px;
+    margin-top: 10px;
+}
+
+.gallery-image {
+    width: 100%;
+    height: 80px; /* Фиксированная высота для миниатюр */
+    object-fit: cover;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.gallery-image:hover {
+    transform: scale(1.08); /* Чуть больший эффект зума при наведении */
+}
+
+
+/* --- СТИЛИ ДЛЯ ОБЩЕГО СООБЩЕНИЯ (#messageModal) --- */
+#messageModal .modal-content-wrapper {
+    background-color: #333;
+    padding: 20px;
+    border-radius: 8px;
+    max-width: 80%;
+    min-width: 300px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    display: flex; /* Используем flexbox для содержимого */
+    flex-direction: column;
+    align-items: center; /* Центрируем по горизонтали */
+    justify-content: center;
+    text-align: center; /* Центрируем текст */
+}
+
+#messageModalText {
+    color: white;
+    margin-bottom: 20px;
+    font-size: 1.1em; /* Немного увеличим для читаемости */
+}
+
+#messageModal button {
+    padding: 10px 20px;
+    background-color: #007bff;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    margin-top: 10px;
+    transition: background-color 0.2s ease;
+}
+
+#messageModal button:hover {
+    background-color: #0056b3;
+}
+
+
+/* --- НОВЫЕ СТИЛИ ДЛЯ МОДАЛЬНОГО ОКНА ПОДТВЕРЖДЕНИЯ УДАЛЕНИЯ (#confirmDeleteModal) --- */
+#confirmDeleteModal .modal-content-wrapper {
+    max-width: 400px; /* Уменьшаем ширину для подтверждения */
+    min-width: 300px;
+    background-color: #333;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    display: flex; /* Используем flexbox для содержимого */
+    flex-direction: column;
+    align-items: center; /* Центрируем по горизонтали */
+    justify-content: center;
+    text-align: center; /* Центрируем текст */
+}
+
+#confirmDeleteMessage {
+    color: white;
+    margin-bottom: 20px;
+    font-size: 1.1em;
+}
+
+/* Стили для кнопок подтверждения/отмены */
+.confirm-button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    min-width: 100px; /* Минимальная ширина для кнопок */
+    transition: background-color 0.3s ease;
+}
+
+.yes-button {
+    background-color: #dc3545; /* Красный для удаления */
+    color: white;
+}
+
+.yes-button:hover {
+    background-color: #c82333;
+}
+
+.no-button {
+    background-color: #6c757d; /* Серый для отмены */
+    color: white;
+}
+
+.no-button:hover {
+    background-color: #5a6268;
+}
+
+/* --- Адаптивность (ВСЕГДА 2 КОЛОНКИ) --- */
+
+@media (max-width: 1024px) {
+    .title {
+        font-size: 32px !important; /* Адаптация размера заголовка */
+    }
+    .gallery-masonry-grid {
+        grid-template-columns: repeat(2, 1fr); /* Всегда 2 колонки */
+        gap: 15px;
+    }
+    .gallery-item {
+        height: 350px; /* Немного меньше высота на средних экранах */
+    }
+    .delete-gallery {
+        padding: 10px 18px !important; /* Адаптация размера кнопки */
+        font-size: 1em !important;
+    }
+}
+
+@media (max-width: 768px) {
+    body {
+        padding: 10px 10px 80px 10px; /* Учитываем высоту футера */
+    }
+    .title {
+        font-size: 28px !important; /* Адаптация размера заголовка */
+        margin-bottom: 20px;
+    }
+    .search-container {
+        max-width: 90%;
+        min-width: unset; /* Убираем минимальную ширину */
+    }
+    .gallery-masonry-grid {
+        grid-template-columns: repeat(2, 1fr); /* Всегда 2 колонки */
+        gap: 10px; /* Уменьшаем отступ между колонками */
+        padding: 0 5px; /* Меньше боковых отступов */
+    }
+    .gallery-item {
+        padding: 8px; /* Меньший паддинг для карточек */
+        height: 300px; /* Меньше высота на планшетах */
+    }
+    .gallery-item h2 {
+        font-size: 0.95em;
+        margin: 3px 0 8px 0;
+    }
+    .gallery-preview-image.no-image-placeholder {
+        height: 100%; /* Занимает всю высоту */
+    }
+    .tags p {
+        font-size: 0.75em;
+    }
+    .tag {
+        font-size: 1em; /* <--- Этот 1em будет относиться к 0.75em родителя */
+        padding: 2px 5px;
+        margin: 2px 3px 2px 0;
+    }
+    .image-grid {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 3px;
+    }
+    .gallery-image {
+        height: 60px;
+    }
+    .delete-gallery {
+        font-size: 0.9em !important; /* Адаптация размера кнопки */
+        padding: 8px 15px !important;
+    }
+    /* Футер */
+    /* В этом случае footer стили из второго блока не используются, так как в вашем HTML его нет */
+    /* .footer {
+        height: 70px;
+        padding: 8px 0;
+    }
+    .footer button {
+        font-size: 0.75em;
+    }
+    .footer button svg, .footer button img {
+        width: 20px;
+        height: 20px;
+    } */
+
+    /* Модальное окно */
+    .close {
+        top: 10px;
+        right: 20px;
+        font-size: 30px;
+    }
+    .prev, .next {
+        padding: 10px;
+        font-size: 16px;
+    }
+    #caption {
+        font-size: 13px;
+        padding: 5px 10px;
+        bottom: 5px;
+    }
+}
+
+@media (max-width: 480px) {
+    /* На очень маленьких экранах ВСЕГДА 2 КОЛОНКИ, но с более агрессивными корректировками */
+    .title {
+        font-size: 24px !important; /* Адаптация размера заголовка */
+    }
+    .gallery-masonry-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 8px; /* Еще уменьшаем отступ */
+        padding: 0 5px; /* Сохраняем небольшой паддинг */
+    }
+    .gallery-item {
+        margin-bottom: 8px; /* Меньший отступ между рядами */
+        padding: 6px;
+        height: 280px; /* Еще уменьшаем высоту для очень маленьких экранов */
+    }
+    .gallery-item h2 {
+        font-size: 1.1em; /* Восстанавливаем, чтобы было читаемо */
+        font-weight: bold;
+        color: #333;
+        margin: 5px 0 10px 0;
+        padding: 0;
+        word-break: break-word;
+        text-align: center; /* Это добавьте */
+    }
+    .gallery-details {
+        font-size: 0.8em; /* Уменьшаем размер текста для деталей */
+    }
+    .tags p {
+        font-size: 1em; /* Возможно, здесь была опечатка, 1em кажется слишком большим для "еще меньше" */
+    }
+    .tag {
+        font-size: 1.1em; /* <--- Этот 1em будет относиться к 1em родителя */
+        padding: 1px 4px;
+        margin: 1px 2px 1px 0;
+    }
+    .image-grid {
+        grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); /* Еще меньше миниатюры */
+        gap: 2px;
+    }
+    .gallery-image {
+        height: 40px;
+    }
+    .delete-gallery {
+        font-size: 0.8em !important; /* Адаптация размера кнопки */
+        padding: 6px 10px !important;
+    }
+    /* Футер */
+    /* В этом случае footer стили из второго блока не используются, так как в вашем HTML его нет */
+    /* .footer {
+        height: 60px;
+        padding: 5px 0;
+    }
+    .footer button {
+        font-size: 0.7em;
+    }
+    .footer button svg, .footer button img {
+        width: 18px;
+        height: 18px;
+    } */
+
+    /* Модальное окно */
+    .close {
+        top: 5px;
+        right: 10px;
+        font-size: 20px;
+    }
+    .prev, .next {
+        padding: 6px;
+        font-size: 14px;
+        margin-top: -15px; /* Соответствующее смещение */
+    }
+    #caption {
+        font-size: 11px;
+        padding: 3px 6px;
+        bottom: 3px;
+    }
+}

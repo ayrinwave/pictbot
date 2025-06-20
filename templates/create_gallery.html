@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Создать галерею</title>
+    <link rel="stylesheet" href="static/style-for-create.css?v=1.0">
+</head>
+<body>
+<div class="container">
+    <h1>Создать галерею</h1>
+    <form id="galleryForm" action="/api/add_gallery" method="post" enctype="multipart/form-data">
+        <input type="hidden" id="telegramUserID" name="telegramUserID">
+        <input type="hidden" id="telegramUsername" name="telegramUsername">
+
+        <label for="galleryName">Название галереи:</label>
+        <input type="text" id="galleryName" name="galleryName" placeholder="Введите название" required>
+
+        <div id="errorMessage" class="error-message"></div>
+
+        <label for="galleryImages">Добавьте файлы:</label>
+        <input type="file" id="galleryImages" name="galleryImages" multiple accept="image/*">
+        <div id="imagePreviews" class="image-previews">
+        </div>
+
+        <label for="tagsInput">Теги (через запятую):</label>
+        <input type="text" id="tagsInput" name="tagsInput" placeholder="например: природа, лето, пейзаж">
+
+        <button type="submit">Создать</button>
+    </form>
+    <a href="/" class="back">Назад</a>
+</div>
+
+<div id="customModal" class="modal">
+    <div class="modal-content">
+        <span id="closeModal" class="close">&times;</span>
+        <p id="modalMessage"></p>
+        <button id="okModalBtn">ОК</button> </div>
+</div>
+
+<div id="myModal" class="modal-image-viewer">
+    <span class="close-image-modal" onclick="closeImageModal()">&times;</span>
+    <div class="modal-content-wrapper">
+        <img class="modal-image-content" id="modalImage">
+    </div>
+</div>
+<script src="static/create-gallery.js"> </script>
+</body>
+</html>

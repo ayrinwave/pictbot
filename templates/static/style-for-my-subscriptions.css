@@ -1,0 +1,331 @@
+/* Общие стили для фона и модального окна */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Roboto', Arial, sans-serif;
+    background: #f0f2f5;
+    color: #333;
+    min-height: 100vh;
+    margin: 0;
+    padding: 20px;
+    padding-bottom: 80px; /* Отступ снизу для футера */
+}
+
+.background {
+    padding: 0;
+    max-width: 800px; /* Умеренная ширина для списка */
+    margin: 0 auto;
+}
+
+.page-title {
+    font-size: 28px;
+    font-weight: bold;
+    color: #333;
+    text-align: center;
+    margin-bottom: 30px;
+    padding-top: 10px;
+}
+
+/* Стили для контейнера спиннера */
+#loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 150px;
+    width: 100%;
+    text-align: center;
+    color: #666;
+    font-size: 1.1em;
+    margin-top: 30px;
+}
+
+.loading-gif {
+    width: 50px;
+    height: 50px;
+    margin-bottom: 15px;
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Стили для списка подписок */
+#subscriptions-list {
+    display: flex;
+    flex-direction: column; /* Элементы будут выстраиваться в столбец */
+    gap: 15px; /* Расстояние между карточками */
+    padding: 0 10px;
+}
+
+.no-subscriptions {
+    text-align: center;
+    color: #666;
+    font-size: 1.1em;
+    margin-top: 50px;
+    padding: 20px;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Стили для каждой карточки пользователя */
+.user-card {
+    display: flex;
+    align-items: center;
+    background-color: #fff;
+    border-radius: 10px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 15px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.user-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.user-card-avatar {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    object-fit: cover;
+    margin-right: 15px;
+    border: 2px solid #007bff;
+    flex-shrink: 0; /* Не сжимать аватар */
+}
+
+.user-card-info {
+    flex-grow: 1; /* Информация занимает оставшееся пространство */
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    overflow: hidden; /* Скрыть переполняющий текст */
+}
+
+.user-card-name {
+    font-size: 1.2em;
+    font-weight: bold;
+    color: #333;
+    margin: 0 0 3px 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.user-card-username {
+    font-size: 0.9em;
+    color: #666;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.view-profile-button {
+    background-color: #007bff;
+    color: white;
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+    flex-shrink: 0; /* Не сжимать кнопку */
+    margin-left: 15px;
+}
+
+.view-profile-button:hover {
+    background-color: #0056b3;
+}
+
+/* Футер (скопировано из index.html или user_galleries.html) */
+.footer {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    background-color: #fff;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    padding: 10px 0;
+    z-index: 900;
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    height: 60px;
+}
+
+.footer button {
+    flex: 1;
+    height: 100%;
+    border: none;
+    background: none;
+    color: #333;
+    font-size: 0.9em;
+    font-weight: normal;
+    cursor: pointer;
+    transition: color 0.2s ease, transform 0.2s ease;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+}
+
+.footer button:hover {
+    color: #007bff;
+    transform: translateY(-2px);
+    background: rgba(0,0,0,0.05);
+}
+
+.footer button:active {
+    transform: translateY(0);
+}
+
+/* Модальное окно для сообщений */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5);
+    justify-content: center;
+    align-items: center;
+}
+
+.modal-content {
+    background-color: #fefefe;
+    margin: auto;
+    padding: 20px;
+    border: 1px solid #888;
+    width: 80%;
+    max-width: 400px;
+    border-radius: 8px;
+    position: relative;
+    text-align: center;
+}
+
+.modal-content p {
+    margin-bottom: 20px;
+    font-size: 1.1em;
+}
+
+.modal-button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1em;
+    transition: background-color 0.2s ease;
+}
+
+.modal-button:hover {
+    background-color: #0056b3;
+}
+
+.close {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: #aaa;
+    font-size: 28px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.close:hover,
+.close:focus {
+    color: black;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+/* Медиа-запросы для адаптивности */
+@media (max-width: 768px) {
+    body {
+        padding: 15px;
+        padding-bottom: 70px;
+    }
+    .page-title {
+        font-size: 24px;
+        margin-bottom: 20px;
+    }
+    .user-card {
+        padding: 12px;
+    }
+    .user-card-avatar {
+        width: 50px;
+        height: 50px;
+        margin-right: 12px;
+    }
+    .user-card-name {
+        font-size: 1.1em;
+    }
+    .user-card-username {
+        font-size: 0.85em;
+    }
+    .view-profile-button {
+        padding: 7px 12px;
+        font-size: 0.85em;
+        margin-left: 10px;
+    }
+    .footer {
+        height: 60px;
+        padding: 8px 0;
+    }
+    .footer button {
+        font-size: 0.8em;
+    }
+}
+
+@media (max-width: 480px) {
+    body {
+        padding: 10px;
+        padding-bottom: 60px;
+    }
+    .page-title {
+        font-size: 22px;
+        margin-bottom: 15px;
+    }
+    .user-card {
+        padding: 10px;
+        flex-wrap: wrap; /* Разрешаем перенос на новую строку */
+        justify-content: center;
+        text-align: center;
+    }
+    .user-card-avatar {
+        margin-right: 0;
+        margin-bottom: 10px;
+    }
+    .user-card-info {
+        width: 100%;
+        text-align: center;
+        margin-bottom: 10px;
+    }
+    .user-card-name, .user-card-username {
+        white-space: normal; /* Разрешаем перенос текста */
+    }
+    .view-profile-button {
+        width: 100%;
+        margin-left: 0;
+    }
+    .footer {
+        height: 55px;
+        padding: 5px 0;
+    }
+    .footer button {
+        font-size: 0.75em;
+    }
+}

@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Мои галереи</title>
+    <link rel="stylesheet" href="static/style-for-view.css?v=1.0">
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+</head>
+<body>
+<div class="background">
+    <h1 class="title">Мои галереи</h1>
+    <div id="loading-spinner" class="hidden">
+        <img src="static/loading.gif" alt="Загрузка..." class="loading-gif">
+        <p>Загрузка ваших галерей...</p>
+    </div>
+    <div id="galleriesContent">
+    </div>
+
+    <a href="/" class="back">На главную</a>
+</div>
+
+<div id="myModal" class="modal">
+    <div class="modal-content-wrapper">
+        <span class="close" id="closeMyModalBtn">&times;</span>
+        <img class="modal-content" id="modalImage" alt="Gallery Image">
+        <a class="prev" id="prevSlideBtn">&#10094;</a>
+        <a class="next" id="nextSlideBtn">&#10095;</a>
+        <div id="caption"></div>
+    </div>
+</div>
+
+<div id="messageModal" class="modal">
+    <div class="modal-content-wrapper">
+        <span class="close" id="closeMessageModalBtn">&times;</span>
+        <p id="messageModalText"></p>
+        <button id="messageModalOkBtn">ОК</button>
+    </div>
+</div>
+
+<div id="confirmDeleteModal" class="modal">
+    <div class="modal-content-wrapper">
+        <span class="close" id="closeConfirmModalBtn">&times;</span>
+        <p id="confirmDeleteMessage"></p>
+        <div style="display: flex; justify-content: center; gap: 15px;">
+            <button id="confirmDeleteYes" class="confirm-button yes-button">Да, удалить</button>
+            <button id="confirmDeleteNo" class="confirm-button no-button">Отмена</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    function escapeHtml(text) {
+        if (typeof text !== 'string') {
+            return text;
+        }
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    function showMessageModal(message, callback) {
+        const modal = document.getElementById('messageModal');
+        const modalMessage = document.getElementById('messageModalText');
+        const closeBtn = document.getElementById('closeMessageModalBtn');
+        const okBtn = document.getElementById('messageModalOkBtn');
+
+        modalMessage.textContent = message;
+        modal.style.display = 'flex';
+
+        const closeHandler = function () {
+            modal.style.display = 'none';
+            if (callback && typeof callback === 'function') {
+                callback();
+            }
+            closeBtn.removeEventListener('click', closeHandler);
+            okBtn.removeEventListener('click', closeHandler);
+            window.removeEventListener('click', windowClickHandler);
+        };
+
+        const windowClickHandler = function (event) {
+            if (event.target === modal) {
+                closeHandler();
+            }
+        };
+
+        closeBtn.addEventListener('click', closeHandler);
+        okBtn.addEventListener('click', closeHandler);
+        window.addEventListener('click', windowClickHandler);
+    }
+
+    let deleteConfirmCallback = null;
+
+    function showConfirmDeleteModal(message, onConfirmCallback) {
+        const modal = document.getElementById('confirmDeleteModal');
+        const messageElement = document.getElementById('confirmDeleteMessage');
+        const yesButton = document.getElementById('confirmDeleteYes');
+        const noButton = document.getElementById('confirmDeleteNo');
+        const closeBtn = document.getElementById('closeConfirmModalBtn');
+
+        messageElement.textContent = message;
+        modal.style.display = 'flex';
+
+        deleteConfirmCallback = onConfirmCallback;
+
+        const handleCloseConfirmModal = function (confirmed) {
+            modal.style.display = 'none';
+            if (deleteConfirmCallback) {
+                deleteConfirmCallback(confirmed);
+                deleteConfirmCallback = null;
+            }
+            yesButton.removeEventListener('click', yesButtonHandler);
+            noButton.removeEventListener('click', noButtonHandler);
+            closeBtn.removeEventListener('click', closeButtonHandler);
+            window.removeEventListener('click', windowClickConfirmHandler);
+        };
+
+        const yesButtonHandler = () => handleCloseConfirmModal(true);
+        const noButtonHandler = () => handleCloseConfirmModal(false);
+        const closeButtonHandler = () => handleCloseConfirmModal(false);
+
+        const windowClickConfirmHandler = function (event) {
+            if (event.target === modal) {
+                handleCloseConfirmModal(false);
+            }
+        };
+
+        yesButton.addEventListener('click', yesButtonHandler);
+        noButton.addEventListener('click', noButtonHandler);
+        closeBtn.addEventListener('click', closeButtonHandler);
+        window.addEventListener('click', windowClickConfirmHandler);
+    }
+
+    const tg = window.Telegram.WebApp;
+    if (tg) {
+        tg.ready();
+    }
+
+    const galleriesContentDiv = document.getElementById('galleriesContent');
+    const loadingSpinner = document.getElementById('loading-spinner');
+    let currentGalleryImages = [];
+    let slideIndex = 0;
+
+    async function loadUserGalleries() {
+        if (loadingSpinner) {
+            loadingSpinner.classList.remove('hidden');
+            galleriesContentDiv.innerHTML = '';
+        } else {
+            galleriesContentDiv.innerHTML = '<p class="no-galleries">Загрузка ваших галерей...</p>';
+        }
+
+        if (!tg || !tg.initData) {
+            showMessageModal("Ошибка: Приложение запущено не в Telegram или нет данных авторизации. Галереи не могут быть загружены.", () => {
+                galleriesContentDiv.innerHTML = '<p class="no-galleries" style="color:red;">Доступ запрещён: Не удалось получить данные Telegram Web App.</p>';
+                if (loadingSpinner) loadingSpinner.classList.add('hidden'); // Скрываем спиннер при ошибке
+            });
+            return;
+        }
+
+        try {
+            console.log("Запрос галерей: Отправка initData к /api/my_galleries_data");
+            const response = await fetch('/api/my_galleries_data', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ initData: tg.initData })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({error: `Сервер ответил со статусом ${response.status}: ${response.statusText}`}));
+                console.error("Ошибка HTTP при запросе /api/my_galleries_data:", response.status, errorData.error);
+                throw new Error(errorData.error || `Сервер ответил со статусом ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log("Ответ от /api/my_galleries_data:", data);
+
+            if (data.ok) {
+                if (Array.isArray(data.galleries) && data.galleries.length > 0) {
+                    console.log("Галереи для рендеринга:", data.galleries);
+                    renderGalleries(data.galleries);
+                    initGalleryActions();
+                } else {
+                    galleriesContentDiv.innerHTML = '<p class="no-galleries">У вас пока нет галерей.</p>';
+                }
+            } else {
+                showMessageModal("Ошибка загрузки галерей: " + (data.error || 'Неизвестная ошибка'), () => {
+                    galleriesContentDiv.innerHTML = '<p class="no-galleries" style="color:red;">Ошибка: ' + (data.error || 'Неизвестная ошибка при загрузке галерей.') + '</p>';
+                });
+            }
+        } catch (error) {
+            console.error("Ошибка при запросе /api/my_galleries_data:", error);
+            showMessageModal("Ошибка сети при загрузке галерей: " + error.message, () => {
+                galleriesContentDiv.innerHTML = '<p class="no-galleries" style="color:red;">Ошибка сети: ' + error.message + '</p>';
+            });
+        } finally {
+            if (loadingSpinner) loadingSpinner.classList.add('hidden');
+        }
+    }
+
+    function renderGalleries(galleries) {
+        console.log("Начало рендеринга галерей. Получено галерей:", galleries.length, galleries);
+        let html = '<div class="gallery-masonry-grid">';
+
+        galleries.forEach(gallery => {
+            let previewImageSrc = gallery.previewURL;
+            if (previewImageSrc && previewImageSrc !== '/static/no-image-placeholder.png') {
+                if (previewImageSrc.startsWith('/')) {
+                    previewImageSrc = previewImageSrc.substring(1);
+                }
+                previewImageSrc = `/secured_gallery_images/${previewImageSrc}`;
+            } else {
+                previewImageSrc = '/static/no-image-placeholder.png';
+            }
+
+            const imageCount = gallery.imageCount || 0;
+            const imageAlt = imageCount > 0 ? `Превью галереи ${escapeHtml(gallery.name)}` : 'Нет изображений';
+
+            html += `
+                <div class="gallery-item">
+                    <h2>${escapeHtml(gallery.name)}</h2>
+                    <div class="gallery-preview" data-gallery-id="${gallery.id}">
+                        <img src="${escapeHtml(previewImageSrc)}" alt="${escapeHtml(imageAlt)}" class="gallery-preview-image">
+                    </div>
+                    <div class="gallery-details">
+                        ${Array.isArray(gallery.tags) && gallery.tags.length > 0 ?
+                `<div class="tags"><p><strong>#:</strong><span class="tag-list">${gallery.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join(' ')}</span></p></div>` :
+                `<div class="tags"><p class="no-tags">Нет тегов</p></div>`
+            }
+                        <span class="gallery-tile-count">${imageCount} изображений</span>
+                    </div>
+                    <button class="delete-gallery" data-gallery-name="${escapeHtml(gallery.name)}">
+                        Удалить
+                    </button>
+                </div>`;
+        });
+        html += '</div>';
+
+        galleriesContentDiv.innerHTML = html;
+        console.log("Рендеринг галерей завершен.");
+    }
+
+    function initGalleryActions() {
+        document.querySelectorAll(".delete-gallery").forEach(button => {
+            button.addEventListener("click", (event) => {
+                event.stopPropagation();
+                const galleryName = event.target.dataset.galleryName;
+
+                if (!tg || !tg.initData) {
+                    showMessageModal("❌ Ошибка: Нет данных Telegram Web App для удаления.");
+                    return;
+                }
+
+                showConfirmDeleteModal(`Вы уверены, что хотите удалить галерею "${galleryName}"?`, async (confirmed) => {
+                    if (confirmed) {
+                        try {
+                            console.log("Попытка удаления галереи:", galleryName);
+                            const response = await fetch(`/api/delete_gallery/${encodeURIComponent(galleryName)}`, {
+                                method: "DELETE",
+                                headers: {
+                                    "Content-Type": "application/json",
+                                    "X-Telegram-Init-Data": tg.initData
+                                },
+                                body: JSON.stringify({
+                                    initData: tg.initData
+                                }),
+                            });
+
+                            if (!response.ok) {
+                                const errorData = await response.json().catch(() => ({error: `Сервер ответил со статусом ${response.status}: ${response.statusText}`}));
+                                console.error("Ошибка HTTP при удалении галереи:", response.status, errorData.error);
+                                throw new Error(errorData.error || "Ошибка при удалении галереи");
+                            }
+
+                            console.log("Галерея успешно удалена:", galleryName);
+                            showMessageModal("Галерея успешно удалена!", () => {
+                                loadUserGalleries();
+                            });
+                        } catch (error) {
+                            console.error("Ошибка в catch-блоке при удалении галереи:", error);
+                            showMessageModal(`Ошибка: ${error.message}`);
+                        }
+                    } else {
+                        console.log("Удаление галереи отменено.");
+                    }
+                });
+            });
+        });
+        document.querySelectorAll(".gallery-preview").forEach(previewDiv => {
+            previewDiv.addEventListener("click", (event) => {
+                const galleryID = previewDiv.dataset.galleryId;
+                if (galleryID) {
+                    openGallerySlider(galleryID);
+                } else {
+                    console.error("Gallery ID not found for previewDiv:", previewDiv);
+                    showMessageModal("Ошибка: Не удалось определить ID галереи для открытия слайдера.");
+                }
+            });
+        });
+    }
+    async function openGallerySlider(galleryID, startIndex = 0) {
+        console.log("Вызвана openGallerySlider для Gallery ID:", galleryID);
+        const modal = document.getElementById("myModal");
+        const modalImage = document.getElementById("modalImage");
+        const captionText = document.getElementById("caption");
+        if (modal && modalImage) {
+            modal.style.display = "flex";
+            modalImage.src = 'static/loading.gif';
+            modalImage.classList.add('loading-gif-modal')
+            captionText.innerHTML = 'Загрузка изображений...';
+        } else {
+            console.error("Элементы модального окна (myModal, modalImage) не найдены.");
+            showMessageModal("Ошибка: Элементы слайдера не найдены на странице.");
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/gallery_images/${galleryID}`);
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({error: "Не удалось распарсить JSON ошибки."}));
+                console.error("Ошибка HTTP при запросе изображений:", response.status, errorData.error);
+                throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            console.log("Ответ от /api/gallery_images/:galleryID:", data);
+
+            if (data.ok) {
+                currentGalleryImages = data.images;
+                if (!Array.isArray(currentGalleryImages)) {
+                    console.error("❌ `data.images` не является массивом:", currentGalleryImages);
+                    showMessageModal("Ошибка: Некорректный формат изображений от сервера.");
+                    currentGalleryImages = [];
+                    return;
+                }
+            } else {
+                showMessageModal("Ошибка при получении изображений галереи: " + (data.error || 'Неизвестная ошибка'));
+                console.error("❌ Ошибка получения изображений:", data.error);
+                currentGalleryImages = [];
+            }
+
+        } catch (e) {
+            console.error("Ошибка при загрузке изображений галереи (catch блок):", e);
+            showMessageModal("Ошибка загрузки изображений галереи. Попробуйте еще раз.");
+            currentGalleryImages = [];
+            return;
+        } finally {
+            if (modalImage) {
+                modalImage.classList.remove('loading-gif-modal');
+            }
+        }
+
+        if (currentGalleryImages.length === 0) {
+            showMessageModal("В этой галерее нет изображений.");
+            console.warn("Галерея ID", galleryID, "не содержит изображений после запроса.");
+            closeModal();
+            return;
+        }
+
+        slideIndex = startIndex;
+        showSlides(slideIndex);
+    }
+
+    function showSlides(n) {
+        const modalImage = document.getElementById("modalImage");
+        const captionText = document.getElementById("caption");
+
+        if (!modalImage || !captionText) {
+            console.error("Элементы слайдера (modalImage, captionText) не найдены в showSlides.");
+            return;
+        }
+
+        if (currentGalleryImages.length === 0) {
+            modalImage.src = '';
+            captionText.innerHTML = 'Нет изображений в галерее.';
+            return;
+        }
+
+        if (n >= currentGalleryImages.length) {
+            slideIndex = 0;
+        }
+        if (n < 0) {
+            slideIndex = currentGalleryImages.length - 1;
+        }
+
+        modalImage.src = currentGalleryImages[slideIndex];
+        captionText.innerHTML = `Изображение ${slideIndex + 1} из ${currentGalleryImages.length}`;
+    }
+
+    function plusSlides(n) {
+        showSlides(slideIndex += n);
+    }
+
+    function closeModal() {
+        const modal = document.getElementById("myModal");
+        if (modal) {
+            modal.style.display = "none";
+        }
+        currentGalleryImages = [];
+        slideIndex = 0;
+        const modalImage = document.getElementById("modalImage");
+        if (modalImage) {
+            modalImage.classList.remove('loading-gif-modal');
+        }
+    }
+    document.getElementById('closeMyModalBtn').addEventListener('click', closeModal);
+    document.getElementById('prevSlideBtn').addEventListener('click', () => plusSlides(-1));
+    document.getElementById('nextSlideBtn').addEventListener('click', () => plusSlides(1));
+    document.getElementById('myModal').addEventListener('click', function(event) {
+        if (event.target === this) {
+            closeModal();
+        }
+    });
+    document.addEventListener('DOMContentLoaded', loadUserGalleries);
+</script>
+</body>
+</html>
