@@ -1,6 +1,3 @@
-FROM ubuntu:latest
-LABEL authors="maxik"
-
 FROM golang:1.22-alpine AS builder
 
 RUN apk add --no-cache git
@@ -25,7 +22,6 @@ COPY --from=builder /app/main .
 
 COPY --from=builder /app/static ./static
 COPY --from=builder /app/templates ./templates
-COPY --from=builder /app/.env ./.env
 
 EXPOSE 4040
 
