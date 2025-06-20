@@ -157,7 +157,7 @@
         if (!tg || !tg.initData) {
             showMessageModal("Ошибка: Приложение запущено не в Telegram или нет данных авторизации. Галереи не могут быть загружены.", () => {
                 galleriesContentDiv.innerHTML = '<p class="no-galleries" style="color:red;">Доступ запрещён: Не удалось получить данные Telegram Web App.</p>';
-                if (loadingSpinner) loadingSpinner.classList.add('hidden'); // Скрываем спиннер при ошибке
+                if (loadingSpinner) loadingSpinner.classList.add('hidden');
             });
             return;
         }
