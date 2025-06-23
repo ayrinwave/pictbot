@@ -1,0 +1,55 @@
+package server
+
+import (
+	"encoding/json"
+	"fmt"
+	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"log"
+	"net/http"
+)
+
+// NgrokAPIResponse описывает структуру ответа от ngrok API
+type NgrokAPIResponse struct {
+	Tunnels []struct {
+		PublicURL string `json:"public_url"`
+		Proto     string `json:"proto"`
+	} `json:"tunnels"`
+}
+
+// GetNgrokPublicURL получает публичный URL из ngrok API
+func GetNgrokPublicURL() (string, error) {
+	resp, err := http.Get("http://127.0.0.1:4040/api/tunnels")
+	if err != nil {
+		return "", fmt.Errorf("ошибка запроса к ngrok API: %v", err)
+	}
+	defer resp.Body.Close()
+
+	var apiResponse NgrokAPIResponse
+	if err := json.NewDecoder(resp.Body).Decode(&apiResponse); err != nil {
+		return "", fmt.Errorf("ошибка декодирования ответа ngrok API: %v", err)
+	}
+
+	for _, tunnel := range apiResponse.Tunnels {
+		if tunnel.Proto == "https" { // Ищем HTTPS туннель
+			return tunnel.PublicURL, nil
+		}
+	}
+
+	return "", fmt.Errorf("HTTPS туннель не найден в ответе ngrok API")
+}
+
+// UpdateBotWebhook обновляет Webhook Telegram-бота с использованием ngrok URL
+func UpdateBotWebhook(bot *tgbotapi.BotAPI) error {
+	publicURL, err := GetNgrokPublicURL()
+	if err != nil {
+		return fmt.Errorf("не удалось получить публичный URL ngrok: %v", err)
+	}
+
+	webhookConfig, _ := tgbotapi.NewWebhook(fmt.Sprintf("%s/webhook", publicURL))
+	if _, err := bot.Request(webhookConfig); err != nil {
+		return fmt.Errorf("ошибка установки webhook: %v", err)
+	}
+
+	log.Printf("Webhook успешно установлен: %s", webhookConfig.URL)
+	return nil
+}

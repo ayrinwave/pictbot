@@ -1,0 +1,30 @@
+// Функция для отображения увеличенной картинки с анимацией
+function showFullImage(imageSrc) {
+    const fullImage = document.createElement("img");
+    fullImage.src = imageSrc;
+    fullImage.className = "full-image animate-image"; // Добавляем класс с анимацией
+    fullImage.id = "fullImage"; // Для идентификации
+
+    // Очищаем галерею и добавляем увеличенное изображение
+    const galleryImages = document.getElementById("galleryImages");
+    galleryImages.innerHTML = ""; // Очищаем текущие изображения
+    galleryImages.appendChild(fullImage);
+
+    // Закрытие модального окна при клике на увеличенное изображение
+    fullImage.addEventListener("click", () => {
+        viewGalleryModal.style.display = "none";
+    });
+
+    // Удаляем класс анимации после завершения анимации
+    fullImage.addEventListener("animationend", () => {
+        fullImage.classList.remove("animate-image");
+    });
+}
+// Закрытие модального окна с анимацией
+closeModalButton.addEventListener("click", () => {
+    viewGalleryModal.classList.add("fade-out"); // Добавляем анимацию исчезновения
+    viewGalleryModal.addEventListener("animationend", () => {
+        viewGalleryModal.style.display = "none"; // Скрываем окно
+        viewGalleryModal.classList.remove("fade-out"); // Убираем класс анимации
+    });
+});

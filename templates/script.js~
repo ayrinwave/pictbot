@@ -1,0 +1,31 @@
+function showFullImage(imageSrc) {
+    const fullImage = document.createElement("img");
+    fullImage.src = imageSrc;
+    fullImage.className = "full-image animate-image";
+    fullImage.id = "fullImage";
+
+    const galleryImages = document.getElementById("galleryImages");
+    galleryImages.innerHTML = "";
+    galleryImages.appendChild(fullImage);
+
+    fullImage.addEventListener("click", () => {
+        viewGalleryModal.classList.add("fade-out");
+        viewGalleryModal.addEventListener("animationend", () => {
+            viewGalleryModal.style.display = "none";
+            viewGalleryModal.classList.remove("fade-out");
+        });
+    });
+
+    fullImage.addEventListener("animationend", () => {
+        fullImage.classList.remove("animate-image");
+    });
+}
+
+// Закрытие модального окна с анимацией
+closeModalButton.addEventListener("click", () => {
+    viewGalleryModal.classList.add("fade-out"); // Добавляем анимацию исчезновения
+    viewGalleryModal.addEventListener("animationend", () => {
+        viewGalleryModal.style.display = "none"; // Скрываем окно
+        viewGalleryModal.classList.remove("fade-out"); // Убираем класс анимации
+    });
+});
